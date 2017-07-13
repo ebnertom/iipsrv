@@ -17,7 +17,7 @@
     Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-
+#include <vector>
 #include "PNGCompressor.h"
 #include "Compressor.h"
 #include "Timer.h"
@@ -25,14 +25,14 @@
 
 static void png_write_data(png_structp png_ptr, png_bytep payload, png_size_t length)
 {
-
-  /* some debugging code that spits the png out to a file
-  //ofstream ofs;
-  //ofs.open ("/tmp/test.png", ofstream::out | ofstream::binary | ofstream::app);
-  //ofs.write((const char*) payload, length);
-  //ofs.close();
-  // logfile << "png_write_data called with " << length << " bytes to write to mem location" << &payload << endl;
-  */
+#ifdef DEBUG
+  // some debugging code that spits the png out to a file
+  ofstream ofs;
+  ofs.open ("test.png", ofstream::out | ofstream::binary | ofstream::app);
+  ofs.write((const char*) payload, length);
+  ofs.close();
+  logfile << "png_write_data called with " << length << " bytes to write to mem location" << &payload << endl;  
+#endif
 
   png_destination_ptr dest = (png_destination_ptr) (png_get_io_ptr(png_ptr));
 
@@ -72,6 +72,7 @@ void PNGCompressor::InitCompression( const RawTile& rawtile, unsigned int strip_
   width = rawtile.width;
   height = rawtile.height;
   channels = rawtile.channels;
+  bpp = rawtile.getBytesPerPixel();
 
   // see png_write_data where data structure, size, and mx are dealt with
   dest.mx = 1024;                           // allocated a reasonably sized header
@@ -79,23 +80,27 @@ void PNGCompressor::InitCompression( const RawTile& rawtile, unsigned int strip_
   dest.size = 0;                            // starts with no actual data written
 
   // Make sure we only try to compress images with 1 or 3 channels with ir without alpha
-  if( ! ( (channels==1) || (channels==2) || (channels==3) || (channels==4))  ){
+  if ( ! ( (channels==1) || (channels==2) || (channels==3) || (channels==4))  ){
     throw string( "PNGCompressor:: currently only either 1 or 3 channels are supported with or without alpha values." );
-  }
+  }  
 
-  const int ciBitDepth = 8;
+  if ( rawtile.bpc != 8 && rawtile.bpc != 16 ){
+	  throw string( "PNGCompressor:: only 8 or 16 bpc output supported" );
+  }
 
   dest.png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, NULL,
                                           (png_error_ptr)png_cexcept_error, (png_error_ptr)NULL );
 
 
-  if (!dest.png_ptr) throw string( "PNGCompressor:: Error allocacating png_structp." );
+  if (!dest.png_ptr){
+	  throw string( "PNGCompressor:: Error allocacating png_structp." );
+  }
 
   dest.info_ptr = png_create_info_struct(dest.png_ptr);
   if (! dest.info_ptr) {
     png_destroy_write_struct(&dest.png_ptr, (png_infopp) NULL);
     throw string( "PNGCompressor:: Error creating png_infop." );
-  }
+  }  
 
   /*********************************************************
    NOTES: enabling compression to Z_BEST_SPEED results in a 3x slowdown
@@ -113,23 +118,32 @@ void PNGCompressor::InitCompression( const RawTile& rawtile, unsigned int strip_
   png_set_filter(dest.png_ptr, 0, filterType );
 
   png_set_write_fn( dest.png_ptr, (png_voidp) &dest, png_write_data, png_flush );
-
-  // We're going to write a very simple 3x8 bit RGB image
+  
   png_set_IHDR( 
     dest.png_ptr,  
     dest.info_ptr, 
     width, 
     height, 
-    ciBitDepth,
+    rawtile.bpc,
     ( (channels<3) ? ( (channels==2) ? PNG_COLOR_TYPE_GRAY_ALPHA : PNG_COLOR_TYPE_GRAY): ( (channels==4) ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB)), 
     PNG_INTERLACE_NONE, 
     PNG_COMPRESSION_TYPE_BASE, 
-    PNG_FILTER_TYPE_BASE 
+    PNG_FILTER_TYPE_BASE
   );
 
   // Write the header information at this point
   png_write_info(dest.png_ptr, dest.info_ptr);
 
+   // this call *must* come after the call to png_write_info
+  // so that the bit depth is set on png_ptr. if not, it is
+  // set to 0 and the call to png_set_swap will be a no-op
+  if (rawtile.bpc > 8){	  
+	  // multi-byte PNG's are 'network' order, or big endian.
+	  // data comes in as little endian, this call accounts for that.
+	  png_set_swap(dest.png_ptr);
+	  // note: if we ever support packed pixel images, we need to make
+	  // a call to png_set_packswap for bpc < 8
+  }
 }
 
 
@@ -143,14 +157,9 @@ unsigned int PNGCompressor::CompressStrip( unsigned char* inputbuff, unsigned ch
 
   Timer partoffunction;
   Timer entirefunction;
-  entirefunction.start();
+  entirefunction.start();  
 
-  png_uint_32     ulRowBytes = width * channels;
-  png_byte        **ppbRowPointers = NULL;
-
-  if( (ppbRowPointers = (png_bytepp) malloc(tile_height * sizeof(png_bytep))) == NULL ){
-    throw "PNGCompressor:: Out of memory";
-  }
+  png_uint_32     ulRowBytes = width * channels * bpp;  // if we ever support 1,2,4 bpc  
 
   // ensure that the output buffer is set properly
   setOutputBuffer(outputbuff, outputbufflen);
@@ -326,7 +335,7 @@ void PNGCompressor::addXMPMetadata( const string& xmp_metadata ){
   string xmp_keyword = "XML:com.adobe.xmp";
 
   int chunksize = xmp_keyword.size() + 5 + xmp_metadata.size() + 1;
-  png_byte chunk[chunksize];
+  std::vector<png_byte> chunk(chunksize);
   png_byte chunktype[4] = { 'i', 'T', 'X', 't' };
 
   int i = 0;
@@ -338,7 +347,7 @@ void PNGCompressor::addXMPMetadata( const string& xmp_metadata ){
   chunk[i] = '\0';                                                  i += 1;                         // translated keyword is empty string with null termination
   memcpy(&chunk[i], xmp_metadata.c_str(), xmp_metadata.size() );    i += xmp_metadata.size();
 
-  png_write_chunk( dest.png_ptr, chunktype, chunk, chunksize );
+  png_write_chunk( dest.png_ptr, chunktype, chunk.data(), chunksize );
 
 }
 

@@ -222,6 +222,10 @@ class RawTile{
     return *this;
   }
 
+  int getBytesPerPixel() const {
+	  return max(bpc / 8, 1);
+  }
+
 
   /// Return the size of the data
   int size() { return dataLength; }

@@ -29,6 +29,7 @@
 
 #if _MSC_VER
 #define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
+// ed todo: need to use _stat64 in order to read attrs on files > 4GB
 #endif
 
 #include <cstdio>
@@ -79,15 +80,12 @@ void IIPImage::swap( IIPImage& first, IIPImage& second ) // nothrow
 
 void IIPImage::testImageType() throw(file_error)
 {
-  // Check whether it is a regular file
+  // Check whether it is a regular file  
   struct stat sb;
-
   string path = fileSystemPrefix + imagePath;
-  const char *pstr = path.c_str();
-
-
+  const char *pstr = path.c_str();  
+  
   if( (stat(pstr,&sb)==0) && S_ISREG(sb.st_mode) ){
-
     unsigned char header[10];
 
     // Immediately open our file to reduce (but not eliminate) TOCTOU race condition risks
@@ -167,8 +165,8 @@ void IIPImage::testImageType() throw(file_error)
 
     updateTimestamp( tmp );
 
-#else
-    string message = path + string( " is not a regular file and no glob support enabled" );
+#else	  	  
+    string message = path + string( " is not a regular file and no glob support enabled, error: " ) + strerror(errno);
     throw file_error( message );
 #endif
 

@@ -57,6 +57,7 @@ private:
   unsigned int width;        /**< the width of the image */
   unsigned int height;       /**< the height of the image */
   png_uint_32 channels;      /**< the channels per sample for the image */
+  int bpp;                   /**< the number of bytes per channel for the image */
 
   png_destination_mgr dest;  /**< destination data structure */
 
@@ -85,6 +86,7 @@ public:
     width = 0;
     height = 0;
     channels = 0;
+	bpp = 0;
 
     this->compressionLevel = compressionLevel;
     setQuality(filterType);

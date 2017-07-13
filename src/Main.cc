@@ -511,7 +511,7 @@ int main( int argc, char *argv[] )
 
       // Check that we actually have a request string
       if( request_string.empty() ){
-	throw string( "QUERY_STRING not set" );
+		throw string( "QUERY_STRING not set" );
       }
 
       if( loglevel >=2 ){
@@ -522,7 +522,7 @@ int main( int argc, char *argv[] )
       // Store some headers
       session.headers["QUERY_STRING"] = request_string;
       session.headers["BASE_URL"] = base_url;
-
+#ifndef DEBUG
       // Get several other HTTP headers
       if( (header = FCGX_GetParam("SERVER_PROTOCOL", request.envp)) ){
         session.headers["SERVER_PROTOCOL"] = string(header);
@@ -542,12 +542,12 @@ int main( int argc, char *argv[] )
 
       // Check for IF_MODIFIED_SINCE
       if( (header = FCGX_GetParam("HTTP_IF_MODIFIED_SINCE", request.envp)) ){
-	session.headers["HTTP_IF_MODIFIED_SINCE"] = string(header);
-	if( loglevel >= 2 ){
-	  logfile << "HTTP Header: If-Modified-Since: " << header << endl;
-	}
+		session.headers["HTTP_IF_MODIFIED_SINCE"] = string(header);
+		if( loglevel >= 2 ){
+		  logfile << "HTTP Header: If-Modified-Since: " << header << endl;
+		}
       }
-
+#endif
 
 #ifdef HAVE_MEMCACHED
       // Check whether this exists in memcached, but only if we haven't had an if_modified_since

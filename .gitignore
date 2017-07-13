@@ -4,6 +4,14 @@
 Makefile
 doc/html
 
+# Visual Studio files
+*.suo
+*.user
+*.filters
+*.opensdf
+*.sdf
+/windows/dependencies
+
 # Files made by autogen.sh.
 Makefile.in
 /aclocal.m4

@@ -185,11 +185,14 @@ void CVT::send( Session* session ){
 
 
   // Only use our floating point pipeline if necessary
-  if( complete_image.bpc > 8 || session->view->floatProcessing() ){
+  // ed todo: need a real fix here for 16bpc data which does not get normalized
+  if( /*complete_image.bpc > 8 ||*/ session->view->floatProcessing() ){
 
     // Apply normalization and perform float conversion
     {
-      if( session->loglevel >= 5 ) function_timer.start();
+      if( session->loglevel >= 5 ){
+		  function_timer.start();
+	  }
       filter_normalize( complete_image, (*session->image)->max, (*session->image)->min );
       if( session->loglevel >= 5 ){
 	*(session->logfile) << "CVT :: Converting to floating point and normalizing in "
@@ -398,8 +401,9 @@ void CVT::send( Session* session ){
   // data is greater than uncompressed - for PNG, we need to supply the output pointer
   unsigned int strip_height = 128;
   unsigned int channels = complete_image.channels;
-  unsigned int strip_size = resampled_width*channels*strip_height+65636;
-  unsigned char* output = new unsigned char[strip_size];
+  unsigned int stride = resampled_width * channels * complete_image.getBytesPerPixel();
+  unsigned int strip_size = stride * strip_height + 65636;
+  unsigned char* output = new unsigned char[strip_size];  
 
   // there is an opportunity to go parallel with this but it would require a different approach
   // in the Compressor classes - might be worth pursuing at some point - @beaudet
@@ -407,10 +411,12 @@ void CVT::send( Session* session ){
   for( int n=0; n<strips; n++ ){
 
     // Get the starting index for this strip of data
-    unsigned char* input = &((unsigned char*)complete_image.data)[n*strip_height*resampled_width*channels];
+    unsigned char* input = &((unsigned char*)complete_image.data)[n*strip_height*stride];
 
     // The last strip may have a different height
-    if( (n==strips-1) && (resampled_height%strip_height!=0) ) strip_height = resampled_height % strip_height;
+    if( (n==strips-1) && (resampled_height%strip_height!=0) ) {
+		strip_height = resampled_height % strip_height;
+	}
 
     if( session->loglevel >= 3 ){
       *(session->logfile) << "CVT :: About to compress strip with height " << strip_height << endl;
@@ -448,7 +454,6 @@ void CVT::send( Session* session ){
 	*(session->logfile) << "CVT :: Error flushing output image data" << endl;
       }
     }
-
   }
 
   // Finish off the image compression

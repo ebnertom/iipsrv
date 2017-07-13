@@ -1,5 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <HAVE_KDU>False</HAVE_KDU>
+    <HAVE_MEMCACHED_WIN>False</HAVE_MEMCACHED_WIN>
+    <KDU_LIB_NAME Condition="'$(HAVE_KDU)'=='False'">
+    </KDU_LIB_NAME>
+    <KDU_LIB_NAME Condition="'$(HAVE_KDU)'=='True'">kdu_v72R.lib;</KDU_LIB_NAME>
+    <MEMCACHED_LIB_NAME Condition="'$(HAVE_MEMCACHED_WIN)'=='False'">
+    </MEMCACHED_LIB_NAME>
+    <MEMCACHED_LIB_NAME Condition="'$(HAVE_MEMCACHED_WIN)'=='True'">MemCacheClient.lib</MEMCACHED_LIB_NAME>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -46,7 +56,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>Windows7.1SDK</PlatformToolset>
+    <PlatformToolset>v100</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -83,21 +93,25 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;HAVE_MEMCACHED;CORESYS_IMPORTS;HAVE_KAKADU;HAVE_TIME_H;VERSION="1.0";_BASETSD_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;HAVE_PNG;_DEBUG;_CONSOLE;CORESYS_IMPORTS;HAVE_TIME_H;VERSION="1.0";_BASETSD_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)\dependencies\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MemCacheClient.lib;kdu_v72R.lib;jpeg-static.lib;libfcgi.lib;libtiff.lib;zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x86\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(KDU_LIB_NAME);$(MEMCACHED_LIB_NAME);jpeg-static.lib;libfcgi.lib;libtiff.lib;zlibstat.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRT;</IgnoreSpecificDefaultLibraries>
-      <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/LTCG /verbose:lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)\dependencies\dlls\x86\$(Configuration)\libpng16.dll" "$(OutDir)libpng16.dll"
+copy "$(ProjectDir)\dependencies\dlls\x86\$(Configuration)\libfcgi.dll" "$(OutDir)libfcgi.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -105,17 +119,22 @@
       </PrecompiledHeader>
       <WarningLevel>Level1</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;HAVE_KAKADU;CORESYS_IMPORTS;HAVE_MEMCACHED;HAVE_TIME_H;VERSION="1.0";_BASETSD_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;HAVE_PNG;_DEBUG;DEBUG;_CONSOLE;CORESYS_IMPORTS;HAVE_TIME_H;VERSION="1.0";_BASETSD_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)\dependencies\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MemCacheClient.lib;kdu_v72R.lib;jpeg-static.lib;libfcgi.lib;libtiff.lib;zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(KDU_LIB_NAME);$(MEMCACHED_LIB_NAME);jpeg-static.lib;libfcgi.lib;libport.lib;libtiff.lib;zlibstat.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libpng16.dll" "$(OutDir)libpng16.dll"
+copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libfcgi.dll" "$(OutDir)libfcgi.dll"
+copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libtiff.dll" "$(OutDir)libtiff.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -125,7 +144,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;VERSION="1.0";HAVE_MEMCACHED;HAVE_KAKADU;CORESYS_IMPORTS;HAVE_TIME_H;_BASETSD_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;VERSION="1.0";CORESYS_IMPORTS;HAVE_TIME_H;_BASETSD_H;_USE_MATH_DEFINES;HAVE_PNG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)\dependencies\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -138,13 +157,17 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MemCacheClient.lib;kdu_v72R.lib;jpeg-static.lib;libfcgi.lib;libtiff.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x86\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(KDU_LIB_NAME);$(MEMCACHED_LIB_NAME);jpeg-static.lib;libfcgi.lib;libtiff.lib;zlibstat.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)\dependencies\dlls\x86\$(Configuration)\libpng16.dll" "$(OutDir)libpng16.dll"
+copy "$(ProjectDir)\dependencies\dlls\x86\$(Configuration)\libfcgi.dll" "$(OutDir)libfcgi.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -154,7 +177,7 @@
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_USE_MATH_DEFINES;HAVE_KAKADU;CORESYS_IMPORTS;HAVE_MEMCACHED;VERSION="1.0";HAVE_TIME_H;_BASETSD_H;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;HAVE_PNG;NDEBUG;_CONSOLE;_USE_MATH_DEFINES;CORESYS_IMPORTS;VERSION="1.0";HAVE_TIME_H;_BASETSD_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)\dependencies\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -167,10 +190,15 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MemCacheClient.lib;kdu_v72R.lib;jpeg-static.lib;libfcgi.lib;libtiff.lib;zlibstat.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(KDU_LIB_NAME);$(MEMCACHED_LIB_NAME);jpeg-static.lib;libfcgi.lib;libtiff.lib;libport.lib;zlibstat.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/LTCG /verbose:lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libpng16.dll" "$(OutDir)libpng16.dll"
+copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libfcgi.dll" "$(OutDir)libfcgi.dll"
+copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libtiff.dll" "$(OutDir)libtiff.dll"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\CVT.cc" />
@@ -183,10 +211,13 @@
     <ClCompile Include="..\src\IIPResponse.cc" />
     <ClCompile Include="..\src\JPEGCompressor.cc" />
     <ClCompile Include="..\src\JTL.cc" />
-    <ClCompile Include="..\src\KakaduImage.cc" />
+    <ClCompile Include="..\src\KakaduImage.cc">
+      <ExcludedFromBuild Condition="'$(HAVE_KDU)'=='False'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\src\Main.cc" />
     <ClCompile Include="..\src\OBJ.cc" />
     <ClCompile Include="..\src\PFL.cc" />
+    <ClCompile Include="..\src\PNGCompressor.cc" />
     <ClCompile Include="..\src\SPECTRA.cc" />
     <ClCompile Include="..\src\Task.cc" />
     <ClCompile Include="..\src\TIL.cc" />
@@ -196,10 +227,18 @@
     <ClCompile Include="..\src\View.cc" />
     <ClCompile Include="..\src\Watermark.cc" />
     <ClCompile Include="..\src\Zoomify.cc" />
-    <ClCompile Include="dependencies\includes\jp2.cpp" />
-    <ClCompile Include="dependencies\includes\jpx.cpp" />
-    <ClCompile Include="dependencies\includes\kdu_stripe_compressor.cpp" />
-    <ClCompile Include="dependencies\includes\kdu_stripe_decompressor.cpp" />
+    <ClCompile Include="dependencies\includes\jp2.cpp">
+      <ExcludedFromBuild Condition="'$(HAVE_KDU)'=='False'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="dependencies\includes\jpx.cpp">
+      <ExcludedFromBuild Condition="'$(HAVE_KDU)'=='False'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="dependencies\includes\kdu_stripe_compressor.cpp">
+      <ExcludedFromBuild Condition="'$(HAVE_KDU)'=='False'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="dependencies\includes\kdu_stripe_decompressor.cpp">
+      <ExcludedFromBuild Condition="'$(HAVE_KDU)'=='False'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Time.cc" />
   </ItemGroup>
   <ItemGroup>
@@ -211,6 +250,7 @@
     <ClInclude Include="..\src\JPEGCompressor.h" />
     <ClInclude Include="..\src\KakaduImage.h" />
     <ClInclude Include="..\src\Memcached.h" />
+    <ClInclude Include="..\src\PNGCompressor.h" />
     <ClInclude Include="..\src\RawTile.h" />
     <ClInclude Include="..\src\Task.h" />
     <ClInclude Include="..\src\TileManager.h" />
