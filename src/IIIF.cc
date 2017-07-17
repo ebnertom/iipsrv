@@ -484,13 +484,12 @@ void IIIF::run( Session* session, const string& src )
 #endif
       }	  
 
+	  // ed todo: test what values come in for colourspace. When do we need to set it?
       // Quality / bit-depth	  
-	  if (quality == "color" || quality == "default"){
-        session->view->colourspace = sRGB;
+	  if (quality == "color" || quality == "default"){        
         session->view->setBitDepth(8);
 	  }
 	  else if (quality == "native"){
-        session->view->colourspace = sRGB;  // if the input is CIELAB we still convert to sRGB
         session->view->setBitDepth((*session->image)->bpc);
 	  }
       else if ( quality == "grey" || quality == "gray" ){

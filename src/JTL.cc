@@ -63,7 +63,7 @@ void JTL::send( Session* session, int resolution, int tile ){
     throw error.str();
   }
 
-  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->logfile, session->loglevel );
+  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->png, session->logfile, session->loglevel );
 
   CompressionType ct;
 

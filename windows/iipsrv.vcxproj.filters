@@ -102,6 +102,9 @@
     <ClCompile Include="..\src\PNGCompressor.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\PTL.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Time.h">

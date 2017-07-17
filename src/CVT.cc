@@ -164,7 +164,7 @@ void CVT::send( Session* session ){
 
 
   // Get our requested region from our TileManager
-  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->logfile, session->loglevel );
+  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->png, session->logfile, session->loglevel );
   RawTile complete_image = tilemanager.getRegion( requested_res,
 						  session->view->xangle, session->view->yangle,
 						  session->view->getLayers(),

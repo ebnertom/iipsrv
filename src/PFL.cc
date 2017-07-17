@@ -112,7 +112,7 @@ void PFL::run( Session* session, const std::string& argument ){
 
 
   // Create our tilemanager object
-  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->logfile, session->loglevel );
+  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->png, session->logfile, session->loglevel );
 
 
   // Use our horizontal views function to get a list of available spectral images

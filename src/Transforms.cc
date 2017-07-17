@@ -641,7 +641,7 @@ void filter_gamma( RawTile& in, float g ){
 }
 
 
-
+//ed todo: support 16-bit
 // Rotation function
 void filter_rotate( RawTile& in, float angle=0.0 ){
 
@@ -715,7 +715,7 @@ void filter_rotate( RawTile& in, float angle=0.0 ){
   }
 }
 
-
+// ed todo: allow for grayscale conversion of alpha channel PNG images (rawtile.channels == 4)
 
 // Convert colour to grayscale using the conversion formula:
 //   Luminance = 0.2126*R + 0.7152*G + 0.0722*B
@@ -798,7 +798,7 @@ void filter_twist( RawTile& rawtile, const vector< vector<float> >& matrix ){
 }
 
 
-
+//ed todo: support 16-bit
 // Flatten a multi-channel image to a given number of bands by simply stripping
 // away extra bands
 void filter_flatten( RawTile& in, int bands ){
@@ -825,7 +825,7 @@ void filter_flatten( RawTile& in, int bands ){
 
 
 
-
+//ed todo: support 16-bit
 // Flip image in horizontal or vertical direction (0=horizontal,1=vertical)
 void filter_flip( RawTile& rawtile, int orientation ){
 
