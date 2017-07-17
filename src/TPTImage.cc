@@ -86,6 +86,7 @@ void TPTImage::loadImageInfo( int seq, int ang ) throw(file_error)
   // We have to do this conversion explicitly to avoid problems on Mac OS X
   channels = (unsigned int) samplesperpixel;
   bpc = (unsigned int) bitspersample;
+  
   sampleType = (sampleformat==3) ? FLOATINGPOINT : FIXEDPOINT;
 
   // Check for the no. of resolutions in the pyramidal image

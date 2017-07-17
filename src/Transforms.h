@@ -23,6 +23,8 @@
 #define _TRANSFORMS_H
 
 #include <vector>
+#include <limits>
+//#include "Time.h"
 #include "RawTile.h"
 
 /// Function to create normalized array
@@ -64,8 +66,32 @@ void filter_LAB2sRGB( RawTile& in );
 /** @param in tile data to be adjusted
     @param c contrast value
 */
-void filter_contrast( RawTile& in, float c );
+void filter_contrast( RawTile& in, float c, int outBpc = 8 );
 
+template <class P>
+void filter_contrast( RawTile& in, float c){
+	unsigned long np = in.width * in.height * in.channels;
+	P* buffer = new P[np];
+	float* infptr = static_cast<float*>(in.data);
+	float max_p = std::numeric_limits<P>::max();
+
+#if defined(__ICC) || defined(__INTEL_COMPILER)
+#pragma ivdep
+#elif defined(_OPENMP)
+#pragma omp parallel for
+#endif
+	for( unsigned long n=0; n<np; n++ ){
+		float v = infptr[n] * max_p * c;
+		v = (v > 0.0) ? floor(v + 0.5) : ceil(v - 0.5);
+		buffer[n] = static_cast<P>( (v<max_p) ? (v<0.0? 0.0 : v) : max_p );
+	}
+
+	// Replace original buffer with new
+	delete[] (float*) in.data;
+	in.data = buffer;	
+	in.bpc = sizeof(P) * 8;
+	in.dataLength = np * sizeof P;
+}
 
 /// Apply a gamma correction
 /** @param in tile input data

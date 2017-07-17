@@ -57,6 +57,7 @@ class View{
   float contrast;                             /// Contrast adjustment requested by CNT command
   float gamma;                                /// Gamma adjustment requested by GAM command
   float rotation;                             /// Rotation requested by ROT command
+  int bit_depth;                              /// output bit depth as specified by the caller
 
 
   /// Internal function to calculate the resolution associated with a width
@@ -168,6 +169,17 @@ class View{
   /* @return scaling factor */
   float getScale();
 
+  /// Return the requsted output bit depth
+  /* @return output bit depth */
+  int getBitDepth() const {
+	  return bit_depth;
+  }
+
+  /// Set the requsted output bit depth
+  /* @param output bit depth in bits per pixel */
+  void setBitDepth(int bpp) {
+	  bit_depth = bpp;
+  }
 
   /// Set the left co-ordinate of the viewport
   /** @param x left resolution independent co-ordinate */

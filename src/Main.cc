@@ -487,6 +487,7 @@ int main( int argc, char *argv[] )
 #ifdef HAVE_PNG
       session.png = &png;
 #endif
+	  // ed todo: need to load this for IIP or IIIF
       // default the compressor to jpeg - if png is requested in a IIIF request, compressor will be set there
       // prior to generating the output - otherwise, all operations such as JTL should continue to work
       session.outputCompressor = &jpeg;

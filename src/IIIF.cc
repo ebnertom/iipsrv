@@ -482,14 +482,20 @@ void IIIF::run( Session* session, const string& src )
         if ( format == "png" )
             session->outputCompressor=session->png;
 #endif
-      }
+      }	  
 
-      // Quality
-      if ( quality == "native" || quality == "color" || quality == "default" ){
-        // Do nothing
-      }
+      // Quality / bit-depth	  
+	  if (quality == "color" || quality == "default"){
+        session->view->colourspace = sRGB;
+        session->view->setBitDepth(8);
+	  }
+	  else if (quality == "native"){
+        session->view->colourspace = sRGB;  // if the input is CIELAB we still convert to sRGB
+        session->view->setBitDepth((*session->image)->bpc);
+	  }
       else if ( quality == "grey" || quality == "gray" ){
         session->view->colourspace = GREYSCALE;
+		session->view->setBitDepth((*session->image)->bpc);
       }
       else{
         // IIIF image spec 2.1 says the image server SHOULD return a 400 error but if we want to support JPG and PNG

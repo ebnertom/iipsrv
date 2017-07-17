@@ -223,7 +223,7 @@ class RawTile{
   }
 
   int getBytesPerPixel() const {
-	  return max(bpc / 8, 1);
+	  return (bpc + 7) / 8;
   }
 
 

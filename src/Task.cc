@@ -117,6 +117,21 @@ void QLT::run( Session* session, const string& argument ){
 
 }
 
+// ed todo: test IIP with BITS
+void BITS::run( Session* session, const string& argument ){
+  int bpp = atoi( argument.c_str() );
+  switch( bpp ){
+  case 8:
+  case 16:
+	  break;
+  default:
+	  if ( session->loglevel >= 2 ){
+		  *(session->logfile) << "BITS :: bit depth of " << argument << " out of bounds. Valid values are 8, 16" << endl;
+	  }
+  }
+
+  session->view->setBitDepth( bpp );
+}
 
 void SDS::run( Session* session, const string& argument ){
 

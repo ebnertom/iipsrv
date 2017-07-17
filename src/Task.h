@@ -337,6 +337,11 @@ class CTW : public Task {
   void run( Session* session, const std::string& argument );
 };
 
+/// BITS Command
+class BITS : public Task {
+ public:
+  void run( Session* session, const std::string& argument );
+};
 
 
 #endif

@@ -21,6 +21,7 @@
 
 
 #include <cmath>
+#include <sstream>
 #include "Transforms.h"
 
 
@@ -576,32 +577,47 @@ void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, uns
   in.data = output;
 }
 
-
-
-// Function to apply a contrast adjustment and clip to 8 bit
-void filter_contrast( RawTile& in, float c ){
-
-  unsigned long np = in.width * in.height * in.channels;
-  unsigned char* buffer = new unsigned char[np];
-  float* infptr = (float*)in.data;
-
-#if defined(__ICC) || defined(__INTEL_COMPILER)
-#pragma ivdep
-#elif defined(_OPENMP)
-#pragma omp parallel for
-#endif
-  for( unsigned long n=0; n<np; n++ ){
-    float v = infptr[n] * 255.0 * c;
-    buffer[n] = (unsigned char)( (v<255.0) ? (v<0.0? 0.0 : v) : 255.0 );
-  }
-
-  // Replace original buffer with new
-  delete[] (float*) in.data;
-  in.data = buffer;
-  in.bpc = 8;
-  in.dataLength = np * in.bpc/8;
+// Function to apply a contrast adjustment and outputs the desired bit depth
+void filter_contrast( RawTile& in, float c, int outBpc ){
+	switch( outBpc ){
+	case 8:
+		filter_contrast<unsigned char>( in, c );
+		break;
+	case 16:
+		filter_contrast<unsigned short>( in, c );
+		break;
+	case 32:
+		filter_contrast<float>( in, c );
+		break;
+	default:
+		std::stringstream ss;
+		ss << outBpc;
+		throw string("output depth of ") + ss.str() + "not supported";
+	}
 }
 
+// Function to apply a contrast adjustment and clip to 8 bit
+//void filter_contrast( RawTile& in, float c ){
+//  unsigned long np = in.width * in.height * in.channels;
+//  unsigned char* buffer = new unsigned char[np];
+//  float* infptr = (float*)in.data;
+//
+//#if defined(__ICC) || defined(__INTEL_COMPILER)
+//#pragma ivdep
+//#elif defined(_OPENMP)
+//#pragma omp parallel for
+//#endif
+//  for( unsigned long n=0; n<np; n++ ){
+//    float v = infptr[n] * 255.0 * c;
+//    buffer[n] = (unsigned char)( (v<255.0) ? (v<0.0? 0.0 : v) : 255.0 );
+//  }
+//
+//  // Replace original buffer with new
+//  delete[] (float*) in.data;
+//  in.data = buffer;
+//  in.bpc = 8;
+//  in.dataLength = np * in.bpc/8;
+//}
 
 
 // Gamma correction
@@ -766,10 +782,10 @@ void filter_twist( RawTile& rawtile, const vector< vector<float> >& matrix ){
       pixel[k] = 0.0;
 
       for( unsigned int j=0; j<nrows[k]; j++ ){
-	float m = matrix[k][j];
-	if( m ){
-	  pixel[k] += (m == 1.0) ? ((float*)rawtile.data)[n+j] : ((float*)rawtile.data)[n+j] * m;
-	}
+	    float m = matrix[k][j];
+	    if( m ){
+		  pixel[k] += (m == 1.0) ? ((float*)rawtile.data)[n+j] : ((float*)rawtile.data)[n+j] * m;
+	    }
       }
     }
 
