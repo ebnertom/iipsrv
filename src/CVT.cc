@@ -276,11 +276,11 @@ void CVT::send( Session* session ){
     switch( interpolation ){
      case 0:
       interpolation_type = "nearest neighbour";
-      filter_interpolate_nearestneighbour( complete_image, resampled_width, resampled_height, complete_image.bpc );
+      filter_interpolate_nearestneighbour( complete_image, resampled_width, resampled_height );
       break;
      default:
       interpolation_type = "bilinear";
-      filter_interpolate_bilinear( complete_image, resampled_width, resampled_height, complete_image.bpc );
+      filter_interpolate_bilinear( complete_image, resampled_width, resampled_height );
       break;
     }
 
@@ -296,7 +296,7 @@ void CVT::send( Session* session ){
     int output_channels = (complete_image.channels==2)? 1 : 3;
     if( session->loglevel >= 5 ) function_timer.start();
 	
-    filter_flatten( complete_image, output_channels, complete_image.bpc );
+    filter_flatten( complete_image, output_channels );
 
     if( session->loglevel >= 5 ){
       *(session->logfile) << "CVT :: Flattening to " << output_channels << " channel"
@@ -327,7 +327,7 @@ void CVT::send( Session* session ){
 
     if( session->loglevel >= 5 ) function_timer.start();
 
-    filter_flip( complete_image, session->view->flip, complete_image.bpc  );
+    filter_flip( complete_image, session->view->flip );
 
     if( session->loglevel >= 5 ){
       string direction = session->view->flip==1 ? "horizontally" : "vertically";

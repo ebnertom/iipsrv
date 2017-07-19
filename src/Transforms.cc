@@ -450,8 +450,8 @@ void filter_inv( RawTile& in ){
 }
 
 // Resize image using nearest neighbour interpolation
-void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height, int out_bpc ){
-  switch( out_bpc ){
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){
+  switch( in.bpc ){
   case 8:
     filter_interpolate_nearestneighbour<uint8_t>( in, resampled_width, resampled_height );
     break;
@@ -463,7 +463,7 @@ void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_wi
     break;
   default:
     std::stringstream ss;
-    ss << out_bpc;
+    ss << in.bpc;
     throw string("filter_interpolate_nearestneighboor :: depth of ") + ss.str() + "not supported";
   }
 }
@@ -471,8 +471,8 @@ void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_wi
 
 // Resize image using bilinear interpolation
 //  - Floating point implementation which benchmarks about 2.5x slower than nearest neighbour
-void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height, int out_bpc ){
-  switch( out_bpc ){
+void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){
+  switch( in.bpc ){
   case 8:
     filter_interpolate_bilinear<uint8_t>( in, resampled_width, resampled_height );
     break;
@@ -484,7 +484,7 @@ void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, uns
     break;
   default:
     std::stringstream ss;
-    ss << out_bpc;
+    ss << in.bpc;
     throw string("filter_interpolate_bilinear :: depth of ") + ss.str() + "not supported";
   }
 }
@@ -508,8 +508,8 @@ void filter_contrast( RawTile& in, float c, int outBpc ){
   }
 }
 
-void filter_flatten( RawTile& in, int bands, int bpc ){
-  switch( bpc ){
+void filter_flatten( RawTile& in, int bands ){
+  switch( in.bpc ){
   case 8:
     filter_flatten<uint8_t>( in, bands );
     break;
@@ -521,14 +521,14 @@ void filter_flatten( RawTile& in, int bands, int bpc ){
     break;
   default:
     std::stringstream ss;
-    ss << bpc;
+    ss << in.bpc;
     throw string("filter_flatten :: depth of ") + ss.str() + "not supported";
   }
 }
 
 // Flip image in horizontal or vertical direction (0=horizontal,1=vertical)
-void filter_flip( RawTile& rawtile, int orientation, int bpc ){
-  switch( bpc ){
+void filter_flip( RawTile& rawtile, int orientation ){
+  switch( rawtile.bpc ){
   case 8:
     filter_flip<uint8_t>( rawtile, orientation );
     break;
@@ -540,7 +540,26 @@ void filter_flip( RawTile& rawtile, int orientation, int bpc ){
     break;
   default:
     std::stringstream ss;
-    ss << bpc;
+    ss << rawtile.bpc;
+    throw string("filter_flip :: depth of ") + ss.str() + "not supported";
+  }
+}
+
+// Rotation function
+void filter_rotate( RawTile& in, float angle=0.0 ){
+  switch( in.bpc ){
+  case 8:
+    filter_rotate<uint8_t>( in, angle );
+    break;
+  case 16:
+    filter_rotate<uint16_t>( in, angle );
+    break;
+  case 32:
+    filter_rotate<float>( in, angle );
+    break;
+  default:
+    std::stringstream ss;
+    ss << in.bpc;
     throw string("filter_flip :: depth of ") + ss.str() + "not supported";
   }
 }
@@ -562,81 +581,6 @@ void filter_gamma( RawTile& in, float g ){
   for( unsigned int n=0; n<np; n++ ){
     float v = infptr[n];
     infptr[n] = powf( v<0.0 ? 0.0 : v, g );
-  }
-}
-
-
-//ed todo: support 16-bit
-// Rotation function
-void filter_rotate( RawTile& in, float angle=0.0 ){
-
-  // Currently implemented only for rectangular rotations
-  if( (int)angle % 90 == 0 && (int)angle % 360 != 0 ){
-
-    // Intialize our counter
-    unsigned int n = 0;
-
-    // Allocate memory for our temporary buffer - rotate function only ever operates on 8bit data
-    void *buffer = new unsigned char[in.width*in.height*in.channels];
-
-    // Rotate 90
-    if( (int) angle % 360 == 90 ){
-#if defined(__ICC) || defined(__INTEL_COMPILER)
-#pragma ivdep
-#elif defined(_OPENMP)
-#pragma omp parallel for if( in.width*in.height > PARALLEL_THRESHOLD )
-#endif
-      for( unsigned int i=0; i < in.width; i++ ){
-	unsigned int n = i*in.height*in.channels;
-	for( int j=in.height-1; j>=0; j-- ){
-	  unsigned int index = (in.width*j + i)*in.channels;
-	  for( int k=0; k < in.channels; k++ ){
-	    ((unsigned char*)buffer)[n++] = ((unsigned char*)in.data)[index+k];
-	  }
-	}
-      }
-    }
-
-    // Rotate 270
-    else if( (int) angle % 360 == 270 ){
-#if defined(__ICC) || defined(__INTEL_COMPILER)
-#pragma ivdep
-#elif defined(_OPENMP)
-#pragma omp parallel for if( in.width*in.height > PARALLEL_THRESHOLD )
-#endif
-      for( int i=in.width-1; i>=0; i-- ){
-	unsigned int n = (in.width-1-i)*in.height*in.channels;
-	for( unsigned int j=0; j<in.height; j++ ){
-	  unsigned int index = (in.width*j + i)*in.channels;
-	  for( int k=0; k < in.channels; k++ ){
-	    ((unsigned char*)buffer)[n++] = ((unsigned char*)in.data)[index+k];
-	  }
-	}
-      }
-    }
-
-    // Rotate 180
-    else if( (int) angle % 360 == 180 ){
-      for( int i=(in.width*in.height)-1; i >= 0; i-- ){
-	unsigned index = i * in.channels;
-	for( int k=0; k < in.channels; k++ ){
-	  ((unsigned char*)buffer)[n++] = ((unsigned char*)in.data)[index+k];
-	}
-      }
-    }
-
-    // Delete old data buffer
-    delete[] (unsigned char*) in.data;
-
-    // Assign new data to Rawtile
-    in.data = buffer;
-
-    // For 90 and 270 rotation swap width and height
-    if( (int)angle % 180 == 90 ){
-      unsigned int tmp = in.height;
-      in.height = in.width;
-      in.width = tmp;
-    }
   }
 }
 

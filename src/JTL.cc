@@ -207,7 +207,7 @@ void JTL::send( Session* session, int resolution, int tile ){
       *(session->logfile) << "JTL :: Flattening channels to " << bands;
       function_timer.start();
     }
-    filter_flatten( rawtile, bands, 8 );
+    filter_flatten( rawtile, bands );
     if( session->loglevel >= 4 ){
       *(session->logfile) << " in " << function_timer.getTime() << " microseconds" << endl;
     }
@@ -234,7 +234,7 @@ void JTL::send( Session* session, int resolution, int tile ){
       flip_timer.start();
     }
 
-    filter_flip( rawtile, session->view->flip, rawtile.bpc );
+    filter_flip( rawtile, session->view->flip );
 
     if( session->loglevel >= 5 ){
       *(session->logfile) << "JTL :: Flipping image ";

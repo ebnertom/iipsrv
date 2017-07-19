@@ -115,9 +115,8 @@ void filter_gamma( RawTile& in, float g );
 /** @param in tile input data
     @param w target width
     @param h target height
-    @param input/output bit depth
 */
-void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h, int bpc );
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h );
 
 /// Resize image using nearest neighbour interpolation
 /** @param P input/output pixel type
@@ -126,7 +125,7 @@ void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned 
     @param h target height	
 */
 template<class P>
-void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){ // ed todo: test
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){
 
   if( !isBitDepthMatch<P>( in.bpc ) ){
     throw string("specified bit depth does not match input bit depth" );
@@ -184,9 +183,8 @@ void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_wi
 /** @param in tile input data
     @param w target width
     @param h target height
-    @param input/output bit depth
 */
-void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h, int bpc );  
+void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h );  
 
 /// Resize image using bilinear interpolation
 /** @param P input/output pixel type
@@ -195,7 +193,7 @@ void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h, i
     @param h target height	
 */
 template<class P>
-void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){ // ed todo: test
+void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){
 
   if( !isBitDepthMatch<P>( in.bpc ) ){
     throw string("specified bit depth does not match input bit depth" );
@@ -275,9 +273,92 @@ void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, uns
 /// Rotate image - currently only by 90, 180 or 270 degrees, other values will do nothing
 /** @param in tile input data
     @param angle angle of rotation - currently only rotations by 90, 180 and 270 degrees
-    are suported, for other values, no rotation will occur
+    are suported, for other values, no rotation will occur    
 */
 void filter_rotate( RawTile& in, float angle );
+
+/// Rotate image - currently only by 90, 180 or 270 degrees, other values will do nothing
+/** @param P input/output pixel type
+    @param in tile input data
+    @param angle angle of rotation - currently only rotations by 90, 180 and 270 degrees
+    are suported, for other values, no rotation will occur    
+*/
+template<class P>
+void filter_rotate( RawTile& in, float angle=0.0 ){
+
+  if( !isBitDepthMatch<P>( in.bpc ) ){
+    throw string("specified bit depth does not match input bit depth" );
+  }
+
+  // Currently implemented only for rectangular rotations
+  if( (int)angle % 90 == 0 && (int)angle % 360 != 0 ){
+
+    // Intialize our counter
+    unsigned int n = 0;
+
+    // Allocate memory for our temporary buffer - rotate function only ever operates on 8bit data
+    P *buffer = new P[in.width*in.height*in.channels];
+
+    // Rotate 90
+    if( (int) angle % 360 == 90 ){
+#if defined(__ICC) || defined(__INTEL_COMPILER)
+#pragma ivdep
+#elif defined(_OPENMP)
+#pragma omp parallel for if( in.width*in.height > PARALLEL_THRESHOLD )
+#endif
+      for( unsigned int i=0; i < in.width; i++ ){
+	unsigned int n = i*in.height*in.channels;
+	for( int j=in.height-1; j>=0; j-- ){
+	  unsigned int index = (in.width*j + i)*in.channels;
+	  for( int k=0; k < in.channels; k++ ){
+	    buffer[n++] = ((P*)in.data)[index+k];
+	  }
+	}
+      }
+    }
+
+    // Rotate 270
+    else if( (int) angle % 360 == 270 ){
+#if defined(__ICC) || defined(__INTEL_COMPILER)
+#pragma ivdep
+#elif defined(_OPENMP)
+#pragma omp parallel for if( in.width*in.height > PARALLEL_THRESHOLD )
+#endif
+      for( int i=in.width-1; i>=0; i-- ){
+	unsigned int n = (in.width-1-i)*in.height*in.channels;
+	for( unsigned int j=0; j<in.height; j++ ){
+	  unsigned int index = (in.width*j + i)*in.channels;
+	  for( int k=0; k < in.channels; k++ ){
+	    buffer[n++] = ((P*)in.data)[index+k];
+	  }
+	}
+      }
+    }
+
+    // Rotate 180
+    else if( (int) angle % 360 == 180 ){
+      for( int i=(in.width*in.height)-1; i >= 0; i-- ){
+	unsigned index = i * in.channels;
+	for( int k=0; k < in.channels; k++ ){
+	  buffer[n++] = ((P*)in.data)[index+k];
+	}
+      }
+    }
+
+    // Delete old data buffer
+    delete[] (P*) in.data;
+
+    // Assign new data to Rawtile
+    in.data = buffer;
+
+    // For 90 and 270 rotation swap width and height
+    if( (int)angle % 180 == 90 ){
+      unsigned int tmp = in.height;
+      in.height = in.width;
+      in.width = tmp;
+    }
+  }
+}
 
 
 /// Convert image to grayscale
@@ -295,9 +376,8 @@ void filter_twist( RawTile& in, const std::vector< std::vector<float> >& ctw );
 /// Extract bands
 /** @param in input image
     @param bands number of bands
-    @param bpc input/output bit depth
 */
-void filter_flatten( RawTile& in, int bands, int bpc );
+void filter_flatten( RawTile& in, int bands );
 
 
 /// Flatten a multi-channel image to a given number of bands by simply stripping
@@ -305,7 +385,6 @@ void filter_flatten( RawTile& in, int bands, int bpc );
 /** @param P input/output pixel type
     @param in input image
     @param bands number of bands
-    @param bpc input/output bit depth
 */
 template<class P>
 void filter_flatten( RawTile& in, int bands ){
@@ -338,9 +417,8 @@ void filter_flatten( RawTile& in, int bands ){
 ///Flip image
 /** @param in input image
     @param o orientation (0=horizontal,1=vertical)
-    @param bpc input/output bit depth
 */
-void filter_flip( RawTile& in, int o, int bpc );
+void filter_flip( RawTile& in, int o );
 
 
 ///Flip image
