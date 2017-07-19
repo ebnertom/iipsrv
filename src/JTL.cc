@@ -234,7 +234,7 @@ void JTL::send( Session* session, int resolution, int tile ){
       flip_timer.start();
     }
 
-    filter_flip( rawtile, session->view->flip  );
+    filter_flip( rawtile, session->view->flip, rawtile.bpc );
 
     if( session->loglevel >= 5 ){
       *(session->logfile) << "JTL :: Flipping image ";

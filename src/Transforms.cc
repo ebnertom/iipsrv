@@ -464,7 +464,7 @@ void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_wi
   default:
     std::stringstream ss;
     ss << out_bpc;
-    throw string("output depth of ") + ss.str() + "not supported";
+    throw string("filter_interpolate_nearestneighboor :: depth of ") + ss.str() + "not supported";
   }
 }
 
@@ -485,7 +485,7 @@ void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, uns
   default:
     std::stringstream ss;
     ss << out_bpc;
-    throw string("output depth of ") + ss.str() + "not supported";
+    throw string("filter_interpolate_bilinear :: depth of ") + ss.str() + "not supported";
   }
 }
 
@@ -504,12 +504,12 @@ void filter_contrast( RawTile& in, float c, int outBpc ){
   default:
     std::stringstream ss;
     ss << outBpc;
-    throw string("output depth of ") + ss.str() + "not supported";
+    throw string("filter_contrast :: output depth of ") + ss.str() + "not supported";
   }
 }
 
-void filter_flatten( RawTile& in, int bands, int outBpc ){
-  switch( outBpc ){
+void filter_flatten( RawTile& in, int bands, int bpc ){
+  switch( bpc ){
   case 8:
     filter_flatten<uint8_t>( in, bands );
     break;
@@ -521,8 +521,27 @@ void filter_flatten( RawTile& in, int bands, int outBpc ){
     break;
   default:
     std::stringstream ss;
-    ss << outBpc;
-    throw string("output depth of ") + ss.str() + "not supported";
+    ss << bpc;
+    throw string("filter_flatten :: depth of ") + ss.str() + "not supported";
+  }
+}
+
+// Flip image in horizontal or vertical direction (0=horizontal,1=vertical)
+void filter_flip( RawTile& rawtile, int orientation, int bpc ){
+  switch( bpc ){
+  case 8:
+    filter_flip<uint8_t>( rawtile, orientation );
+    break;
+  case 16:
+    filter_flip<uint16_t>( rawtile, orientation );
+    break;
+  case 32:
+    filter_flip<float>( rawtile, orientation );
+    break;
+  default:
+    std::stringstream ss;
+    ss << bpc;
+    throw string("filter_flip :: depth of ") + ss.str() + "not supported";
   }
 }
 
@@ -621,7 +640,6 @@ void filter_rotate( RawTile& in, float angle=0.0 ){
   }
 }
 
-// ed todo: allow for grayscale conversion of alpha channel PNG images (rawtile.channels == 4)
 
 // Convert colour to grayscale using the conversion formula:
 //   Luminance = 0.2126*R + 0.7152*G + 0.0722*B
@@ -656,7 +674,6 @@ void filter_greyscale( RawTile& rawtile ){
   rawtile.channels = 1;
   rawtile.dataLength = np;
 }
-
 
 
 // Apply twist or channel recombination to colour or multi-channel image
@@ -701,50 +718,4 @@ void filter_twist( RawTile& rawtile, const vector< vector<float> >& matrix ){
   }
   delete[] nrows;
   delete[] pixel;
-}
-
-//ed todo: support 16-bit
-// Flip image in horizontal or vertical direction (0=horizontal,1=vertical)
-void filter_flip( RawTile& rawtile, int orientation ){
-
-  unsigned char* buffer = new unsigned char[rawtile.width * rawtile.height * rawtile.channels];
-
-  // Vertical
-  if( orientation == 2 ){
-#if defined(__ICC) || defined(__INTEL_COMPILER)
-#pragma ivdep
-#elif defined(_OPENMP)
-#pragma omp parallel for if( rawtile.width*rawtile.height > PARALLEL_THRESHOLD )
-#endif
-    for( int j=rawtile.height-1; j>=0; j-- ){
-      unsigned long n = j*rawtile.width*rawtile.channels;
-      for( unsigned int i=0; i<rawtile.width; i++ ){
-        unsigned long index = (rawtile.width*j + i)*rawtile.channels;
-        for( int k=0; k<rawtile.channels; k++ ){
-          buffer[n++] = ((unsigned char*)rawtile.data)[index++];
-        }
-      }
-    }
-  }
-  // Horizontal
-  else{
-#if defined(__ICC) || defined(__INTEL_COMPILER)
-#pragma ivdep
-#elif defined(_OPENMP)
-#pragma omp parallel for if( rawtile.width*rawtile.height > PARALLEL_THRESHOLD )
-#endif
-    for( unsigned int j=0; j<rawtile.height; j++ ){
-      unsigned long n = j*rawtile.width*rawtile.channels;
-      for( int i=rawtile.width-1; i>=0; i-- ){
-        unsigned long index = (rawtile.width*j + i)*rawtile.channels;
-        for( int k=0; k<rawtile.channels; k++ ){
-	  buffer[n++] = ((unsigned char*)rawtile.data)[index++];
-        }
-      }
-    }
-  }
-
-  // Delete our old data buffer and instead point to our grayscale data
-  delete[] (unsigned char*) rawtile.data;
-  rawtile.data = (void*) buffer;
 }

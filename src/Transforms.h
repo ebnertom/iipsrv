@@ -27,6 +27,11 @@
 //#include "Time.h"
 #include "RawTile.h"
 
+template<class T>
+bool isBitDepthMatch( int b ){
+  return sizeof(T) * 8 != b;
+}
+
 /// Function to create normalized array
 /** @param in tile data to be adjusted
     @param min : vector of minima
@@ -62,35 +67,41 @@ void filter_shade( RawTile& in, int h_angle, int v_angle );
 void filter_LAB2sRGB( RawTile& in );
 
 
-/// Function to apply a contrast adjustment and clip to 8 bit
+/// Function to apply a contrast adjustment and transform to the desired output bit depth (linear scaling)
 /** @param in tile data to be adjusted
     @param c contrast value
+    @param outBpc output bit depth
 */
 void filter_contrast( RawTile& in, float c, int outBpc = 8 );
 
-template<class P>
+/// Function to apply a contrast adjustment and transform to the desired output bit depth (linear scaling)
+/** @param OUTP output pixel type
+    @param in tile data to be adjusted
+    @param c contrast value
+*/
+template<class OUTP>
 void filter_contrast( RawTile& in, float c){
-	unsigned long np = in.width * in.height * in.channels;
-	P* buffer = new P[np];
-	float* infptr = static_cast<float*>(in.data);
-	float max_p = std::numeric_limits<P>::max();
+  unsigned long np = in.width * in.height * in.channels;
+  OUTP* buffer = new OUTP[np];
+  float* infptr = static_cast<float*>(in.data);
+  float max_p = std::numeric_limits<OUTP>::max();
 
 #if defined(__ICC) || defined(__INTEL_COMPILER)
 #pragma ivdep
 #elif defined(_OPENMP)
 #pragma omp parallel for
 #endif
-	for( unsigned long n=0; n<np; n++ ){
-		float v = infptr[n] * max_p * c;
-		v = (v > 0.0) ? floor(v + 0.5) : ceil(v - 0.5);
-		buffer[n] = static_cast<P>( (v<max_p) ? (v<0.0? 0.0 : v) : max_p );
-	}
+  for( unsigned long n=0; n<np; n++ ){
+    float v = infptr[n] * max_p * c;
+    v = (v > 0.0) ? floor(v + 0.5) : ceil(v - 0.5);
+    buffer[n] = static_cast<OUTP>( (v<max_p) ? (v<0.0? 0.0 : v) : max_p );
+  }
 
-	// Replace original buffer with new
-	delete[] (float*) in.data;
-	in.data = buffer;	
-	in.bpc = sizeof(P) * 8;
-	in.dataLength = np * sizeof P;
+  // Replace original buffer with new
+  delete[] (float*) in.data;
+  in.data = buffer;	
+  in.bpc = sizeof(OUTP) * 8;
+  in.dataLength = np * sizeof(OUTP);
 }
 
 /// Apply a gamma correction
@@ -104,17 +115,22 @@ void filter_gamma( RawTile& in, float g );
 /** @param in tile input data
     @param w target width
     @param h target height
-	@param out_bpc output bit depth
+    @param input/output bit depth
 */
-void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h, int out_bpc );
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h, int bpc );
 
 /// Resize image using nearest neighbour interpolation
-/** @param in tile input data
+/** @param P input/output pixel type
+    @param in tile input data
     @param w target width
     @param h target height	
 */
 template<class P>
 void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){ // ed todo: test
+
+  if( !isBitDepthMatch<P>( in.bpc ) ){
+    throw string("specified bit depth does not match input bit depth" );
+  }
 
   // Pointer to input buffer
   P* input = (P*) in.data;
@@ -168,17 +184,22 @@ void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_wi
 /** @param in tile input data
     @param w target width
     @param h target height
-	@param out_bpc output bit depth
+    @param input/output bit depth
 */
-void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h, int out_bpc );  
+void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h, int bpc );  
 
 /// Resize image using bilinear interpolation
-/** @param in tile input data
+/** @param P input/output pixel type
+    @param in tile input data
     @param w target width
     @param h target height	
 */
 template<class P>
 void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){ // ed todo: test
+
+  if( !isBitDepthMatch<P>( in.bpc ) ){
+    throw string("specified bit depth does not match input bit depth" );
+  }
 
   // Pointer to input buffer
   P* input = (P*) in.data;
@@ -274,13 +295,24 @@ void filter_twist( RawTile& in, const std::vector< std::vector<float> >& ctw );
 /// Extract bands
 /** @param in input image
     @param bands number of bands
+    @param bpc input/output bit depth
 */
 void filter_flatten( RawTile& in, int bands, int bpc );
 
-// Flatten a multi-channel image to a given number of bands by simply stripping
-// away extra bands
+
+/// Flatten a multi-channel image to a given number of bands by simply stripping
+/// away extra bands. Output bit depth matches input bit depth.
+/** @param P input/output pixel type
+    @param in input image
+    @param bands number of bands
+    @param bpc input/output bit depth
+*/
 template<class P>
 void filter_flatten( RawTile& in, int bands ){
+  
+  if( !isBitDepthMatch<P>( in.bpc ) ){
+    throw string("specified bit depth does not match input bit depth" );
+  }
 
   // We cannot increase the number of channels
   if( bands >= in.channels ) return;
@@ -297,7 +329,7 @@ void filter_flatten( RawTile& in, int bands ){
     }
     no += gap;
   }
-
+  
   in.channels = bands;
   in.dataLength = ni * sizeof(P)/8;
 }
@@ -306,8 +338,59 @@ void filter_flatten( RawTile& in, int bands ){
 ///Flip image
 /** @param in input image
     @param o orientation (0=horizontal,1=vertical)
+    @param bpc input/output bit depth
 */
-void filter_flip( RawTile& in, int o );
+void filter_flip( RawTile& in, int o, int bpc );
 
+
+///Flip image
+/** @param P input/output pixel type
+    @param in input image
+    @param o orientation (0=horizontal,1=vertical)
+*/
+template<class P>
+void filter_flip( RawTile& rawtile, int orientation ){
+
+  P* buffer = new P[rawtile.width * rawtile.height * rawtile.channels];
+
+  // Vertical
+  if( orientation == 2 ){
+#if defined(__ICC) || defined(__INTEL_COMPILER)
+#pragma ivdep
+#elif defined(_OPENMP)
+#pragma omp parallel for if( rawtile.width*rawtile.height > PARALLEL_THRESHOLD )
+#endif
+    for( int j=rawtile.height-1; j>=0; j-- ){
+      unsigned long n = j*rawtile.width*rawtile.channels;
+      for( unsigned int i=0; i<rawtile.width; i++ ){
+        unsigned long index = (rawtile.width*j + i)*rawtile.channels;
+        for( int k=0; k<rawtile.channels; k++ ){
+          buffer[n++] = ((P*)rawtile.data)[index++];
+        }
+      }
+    }
+  }
+  // Horizontal
+  else{
+#if defined(__ICC) || defined(__INTEL_COMPILER)
+#pragma ivdep
+#elif defined(_OPENMP)
+#pragma omp parallel for if( rawtile.width*rawtile.height > PARALLEL_THRESHOLD )
+#endif
+    for( unsigned int j=0; j<rawtile.height; j++ ){
+      unsigned long n = j*rawtile.width*rawtile.channels;
+      for( int i=rawtile.width-1; i>=0; i-- ){
+        unsigned long index = (rawtile.width*j + i)*rawtile.channels;
+        for( int k=0; k<rawtile.channels; k++ ){
+	  buffer[n++] = ((P*)rawtile.data)[index++];
+        }
+      }
+    }
+  }
+
+  // Delete our old data buffer and instead point to our grayscale data
+  delete[] (P*) rawtile.data;
+  rawtile.data = (void*) buffer;
+}
 
 #endif

@@ -263,9 +263,7 @@ void CVT::send( Session* session ){
 			*(session->logfile) << "CVT :: Applying contrast of " << session->view->getContrast()
 			  << " and converting to 8bit in " << function_timer.getTime() << " microseconds" << endl;
     }
-  }  
-
-	// at this point in the command, complete_image.bpc reflects the output bit depth
+  }  	
 
   // Resize our image as requested. Use the interpolation method requested in the server configuration.
   //  - Use bilinear interpolation by default  
@@ -329,7 +327,7 @@ void CVT::send( Session* session ){
 
     if( session->loglevel >= 5 ) function_timer.start();
 
-    filter_flip( complete_image, session->view->flip  );
+    filter_flip( complete_image, session->view->flip, complete_image.bpc  );
 
     if( session->loglevel >= 5 ){
       string direction = session->view->flip==1 ? "horizontally" : "vertically";
