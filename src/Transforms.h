@@ -68,7 +68,7 @@ void filter_LAB2sRGB( RawTile& in );
 */
 void filter_contrast( RawTile& in, float c, int outBpc = 8 );
 
-template <class P>
+template<class P>
 void filter_contrast( RawTile& in, float c){
 	unsigned long np = in.width * in.height * in.channels;
 	P* buffer = new P[np];
@@ -104,16 +104,151 @@ void filter_gamma( RawTile& in, float g );
 /** @param in tile input data
     @param w target width
     @param h target height
+	@param out_bpc output bit depth
 */
-void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h );
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h, int out_bpc );
 
+/// Resize image using nearest neighbour interpolation
+/** @param in tile input data
+    @param w target width
+    @param h target height	
+*/
+template<class P>
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){ // ed todo: test
+
+  // Pointer to input buffer
+  P* input = (P*) in.data;
+
+  int channels = in.channels;
+  unsigned int width = in.width;
+  unsigned int height = in.height;
+
+  // Pointer to output buffer
+  P* output;
+
+  // Create new buffer if size is larger than input size
+  bool new_buffer = false;
+  if( resampled_width*resampled_height > in.width*in.height ){
+    new_buffer = true;
+    output = new P[resampled_width*resampled_height*in.channels];
+  }
+  else output = (P*) in.data;
+
+  // Calculate our scale
+  float xscale = (float)width / (float)resampled_width;
+  float yscale = (float)height / (float)resampled_height;
+
+  for( unsigned int j=0; j<resampled_height; j++ ){
+    for( unsigned int i=0; i<resampled_width; i++ ){
+
+      // Indexes in the current pyramid resolution and resampled spaces
+      // Make sure to limit our input index to the image surface
+      unsigned int ii = (unsigned int) floorf(i*xscale);
+      unsigned int jj = (unsigned int) floorf(j*yscale);
+      unsigned int pyramid_index = (unsigned int) channels * ( ii + jj*width );
+
+      unsigned int resampled_index = (i + j*resampled_width)*channels;
+      for( int k=0; k<in.channels; k++ ){
+	    output[resampled_index+k] = input[pyramid_index+k];
+      }
+    }
+  }
+
+  // Delete original buffer
+  if( new_buffer ) delete[] (P*) input;
+
+  // Correctly set our Rawtile info
+  in.width = resampled_width;
+  in.height = resampled_height;
+  in.dataLength = resampled_width * resampled_height * channels * sizeof(P)/8;
+  in.data = output;
+}
 
 /// Resize image using bilinear interpolation
 /** @param in tile input data
     @param w target width
     @param h target height
+	@param out_bpc output bit depth
 */
-void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h );
+void filter_interpolate_bilinear( RawTile& in, unsigned int w, unsigned int h, int out_bpc );  
+
+/// Resize image using bilinear interpolation
+/** @param in tile input data
+    @param w target width
+    @param h target height	
+*/
+template<class P>
+void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){ // ed todo: test
+
+  // Pointer to input buffer
+  P* input = (P*) in.data;
+
+  int channels = in.channels;
+  unsigned int width = in.width;
+  unsigned int height = in.height;
+
+  // Create new buffer and pointer for our output
+  P* output = new P[resampled_width*resampled_height*in.channels];
+
+  // Calculate our scale
+  float xscale = (float)(width) / (float)resampled_width;
+  float yscale = (float)(height) / (float)resampled_height;
+
+
+  // Do not parallelize for small images (256x256 pixels) as this can be slower that single threaded
+#if defined(__ICC) || defined(__INTEL_COMPILER)
+#pragma ivdep
+#elif defined(_OPENMP)
+#pragma omp parallel for if( resampled_width*resampled_height > PARALLEL_THRESHOLD )
+#endif
+  for( unsigned int j=0; j<resampled_height; j++ ){
+
+    // Index to the current pyramid resolution's top left pixel
+    int jj = (int) floor( j*yscale );
+
+    // Calculate some weights - do this in the highest loop possible
+    float jscale = j*yscale;
+    float c = (float)(jj+1) - jscale;
+    float d = jscale - (float)jj;
+
+    for( unsigned int i=0; i<resampled_width; i++ ){
+
+      // Index to the current pyramid resolution's top left pixel
+      int ii = (int) floor( i*xscale );
+
+      // Calculate the indices of the 4 surrounding pixels
+      unsigned int p11, p12, p21, p22;
+      p11 = (unsigned int) ( channels * ( ii + jj*width ) );
+      p12 = (unsigned int) ( channels * ( ii + (jj+1)*width ) );
+      p21 = (unsigned int) ( channels * ( (ii+1) + jj*width ) );
+      p22 = (unsigned int) ( channels * ( (ii+1) + (jj+1)*width ) );
+
+      // Calculate the rest of our weights
+      float iscale = i*xscale;
+      float a = (float)(ii+1) - iscale;
+      float b = iscale - (float)ii;
+
+      // Output buffer index
+      unsigned int resampled_index = j*resampled_width*in.channels + i*in.channels;
+
+      for( int k=0; k<in.channels; k++ ){
+        float tx = input[p11+k]*a + input[p21+k]*b;
+        float ty = input[p12+k]*a + input[p22+k]*b;
+        P r = (P)( c*tx + d*ty );
+        output[resampled_index+k] = r;
+      }
+    }
+  }
+
+  // Delete original buffer
+  delete[] (P*) input;
+
+  // Correctly set our Rawtile info
+  in.width = resampled_width;
+  in.height = resampled_height;
+  in.dataLength = resampled_width * resampled_height * channels * sizeof(P)/8;
+  in.data = output;
+}
 
 
 /// Rotate image - currently only by 90, 180 or 270 degrees, other values will do nothing
@@ -140,7 +275,32 @@ void filter_twist( RawTile& in, const std::vector< std::vector<float> >& ctw );
 /** @param in input image
     @param bands number of bands
 */
-void filter_flatten( RawTile& in, int bands );
+void filter_flatten( RawTile& in, int bands, int bpc );
+
+// Flatten a multi-channel image to a given number of bands by simply stripping
+// away extra bands
+template<class P>
+void filter_flatten( RawTile& in, int bands ){
+
+  // We cannot increase the number of channels
+  if( bands >= in.channels ) return;
+
+  unsigned long np = in.width * in.height;
+  unsigned long ni = 0;
+  unsigned long no = 0;
+  unsigned int gap = in.channels - bands;
+
+  // Simply loop through assigning to the same buffer
+  for( unsigned long i=0; i<np; i++ ){
+    for( int k=0; k<bands; k++ ){
+      ((P*)in.data)[ni++] = ((P*)in.data)[no++];
+    }
+    no += gap;
+  }
+
+  in.channels = bands;
+  in.dataLength = ni * sizeof(P)/8;
+}
 
 
 ///Flip image

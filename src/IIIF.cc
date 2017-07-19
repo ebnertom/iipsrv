@@ -369,9 +369,9 @@ void IIIF::run( Session* session, const string& src )
         else if ( pos == 0 ){
           istringstream i( sizeString.substr( 1, string::npos ) );
           if ( !(i >> requested_height) ) throw invalid_argument( "invalid height" );
-	  requested_width = round( (float)requested_height * ratio );
-	  // Maintain aspect ratio in this case
- 	  session->view->maintain_aspect = true;
+					requested_width = round( (float)requested_height * ratio );
+					// Maintain aspect ratio in this case
+ 					session->view->maintain_aspect = true;
         }
 
         // If comma is not at the beginning, we must have a "width,height" or "width," request
@@ -379,9 +379,9 @@ void IIIF::run( Session* session, const string& src )
         else if ( pos == sizeString.length() - 1 ){
           istringstream i( sizeString.substr( 0, string::npos - 1 ) );
           if ( !(i >> requested_width ) ) throw invalid_argument( "invalid width" );
-	  requested_height = round( (float)requested_width / ratio );
-	  // Maintain aspect ratio in this case
- 	  session->view->maintain_aspect = true;
+					requested_height = round( (float)requested_width / ratio );
+					// Maintain aspect ratio in this case
+ 					session->view->maintain_aspect = true;
         }
 
         // Remaining case is "width,height"
@@ -401,14 +401,14 @@ void IIIF::run( Session* session, const string& src )
 
       // Limit our requested size to the maximum allowable size if necessary
       if( requested_width > max_size || requested_height > max_size ){
-	if( ratio > 1.0 ){
-	  requested_width = max_size;
-	  requested_height = session->view->maintain_aspect ? round(max_size*ratio) : max_size;
-	}
-	else{
-	  requested_height = max_size;
-	  requested_width = session->view->maintain_aspect ? round(max_size/ratio) : max_size;
-	}
+				if( ratio > 1.0 ){
+					requested_width = max_size;
+					requested_height = session->view->maintain_aspect ? round(max_size*ratio) : max_size;
+				}
+				else{
+					requested_height = max_size;
+					requested_width = session->view->maintain_aspect ? round(max_size/ratio) : max_size;
+				}
       }
 
       session->view->setRequestWidth( requested_width );
@@ -419,7 +419,6 @@ void IIIF::run( Session* session, const string& src )
       if ( session->loglevel >= 4 ){
         *(session->logfile) << "IIIF :: Requested Size: " << requested_width << "x" << requested_height << endl;
       }
-
     }
 
     // Rotation Parameter
@@ -455,7 +454,6 @@ void IIIF::run( Session* session, const string& src )
         if ( session->view->flip != 0 ) *(session->logfile) << " with horizontal flip";
         *(session->logfile) << endl;
       }
-
     }
 
     // Quality and Format Parameters
@@ -466,7 +464,7 @@ void IIIF::run( Session* session, const string& src )
 
       size_t pos = quality.find_last_of(".");
 
-      // Format - if dot is not present, we use default and currently only supported format - JPEG
+      // Format - if dot is not present, we use default (JPEG)
       if ( pos != string::npos ){
         format = quality.substr( pos + 1, string::npos );
         quality.erase( pos, string::npos );
@@ -483,35 +481,35 @@ void IIIF::run( Session* session, const string& src )
             session->outputCompressor=session->png;
 #endif
       }	  
+			
+			// Quality / bit-depth	  
+			if (quality == "color" || quality == "default"){        
+				session->view->setBitDepth(8);
+			}
+			else if (quality == "native"){
+				// if the output bit depth/format combo is unsupported an error is generated downstream
+				session->view->setBitDepth((*session->image)->bpc);
+			}
+			else if ( quality == "grey" || quality == "gray" ){
+				session->view->colourspace = GREYSCALE;
+				session->view->setBitDepth((*session->image)->bpc);
+			}
+			else{
+				// IIIF image spec 2.1 says the image server SHOULD return a 400 error but if we want to support JPG and PNG
+				// lossy quality we might consider enabling a syntax that allows clients to fine tune the quality
+				// by manipulating the URL as the QLT factor of the IIP Protocol currently allows, e.g. default.90.jpg for JPEG 
+				// or default.PNG_FILTER_AVG.png for PNG, etc.  In consulting with the IIIF spec authors, this has been discussed
+				// but there were insufficient use cases to justify the spec taking it up right now.
+				// see https://github.com/IIIF/iiif.io/issues/294 for the history - @beaudet
+				throw invalid_argument( "unsupported quality parameter - must be one of native, color or grey" );
+			}
 
-	  // ed todo: test what values come in for colourspace. When do we need to set it?
-      // Quality / bit-depth	  
-	  if (quality == "color" || quality == "default"){        
-        session->view->setBitDepth(8);
-	  }
-	  else if (quality == "native"){
-        session->view->setBitDepth((*session->image)->bpc);
-	  }
-      else if ( quality == "grey" || quality == "gray" ){
-        session->view->colourspace = GREYSCALE;
-		session->view->setBitDepth((*session->image)->bpc);
-      }
-      else{
-        // IIIF image spec 2.1 says the image server SHOULD return a 400 error but if we want to support JPG and PNG
-        // lossy quality we might consider enabling a syntax that allows clients to fine tune the quality
-        // by manipulating the URL as the QLT factor of the IIP Protocol currently allows, e.g. default.90.jpg for JPEG 
-        // or default.PNG_FILTER_AVG.png for PNG, etc.  In consulting with the IIIF spec authors, this has been discussed
-        // but there were insufficient use cases to justify the spec taking it up right now.
-        // see https://github.com/IIIF/iiif.io/issues/294 for the history - @beaudet
-        throw invalid_argument( "unsupported quality parameter - must be one of native, color or grey" );
-      }
+			numOfTokens++;
 
-      numOfTokens++;
-
-      if ( session->loglevel >= 4 ){
-        *(session->logfile) << "IIIF :: Requested Quality: " << quality << " with format: " << format << endl;
-      }
-    }
+			if ( session->loglevel >= 4 ){
+					*(session->logfile) << "IIIF :: Requested Quality: " << quality << " with format: " << format << endl;
+			}
+		}
 
     // Too many parameters
     if ( izer.hasMoreTokens() ){
@@ -582,6 +580,7 @@ void IIIF::run( Session* session, const string& src )
     unsigned int j = view_top / th;
     unsigned int tile = (j * ntlx) + i;
 
+	// ed todo: support PNG here
     // Simply pass this on to our JTL send command
     JTL jtl;
     jtl.send( session, requested_res, tile );

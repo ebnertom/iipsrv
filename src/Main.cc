@@ -20,7 +20,7 @@
 
 
 
-
+// ed todo: 404's are returning data and not throwing a bad status code
 
 #include <fcgiapp.h>
 
@@ -650,13 +650,13 @@ int main( int argc, char *argv[] )
 
 #ifdef HAVE_MEMCACHED
       if( memcached.connected() ){
-	Timer memcached_timer;
-	memcached_timer.start();
-	memcached.store( session.headers["QUERY_STRING"], writer.buffer, writer.sz );
-	if( loglevel >= 3 ){
-	  logfile << "Memcached :: stored " << writer.sz << " bytes in "
-		  << memcached_timer.getTime() << " microseconds" << endl;
-	}
+				Timer memcached_timer;
+				memcached_timer.start();
+				memcached.store( session.headers["QUERY_STRING"], writer.buffer, writer.sz );
+				if( loglevel >= 3 ){
+					logfile << "Memcached :: stored " << writer.sz << " bytes in "
+						<< memcached_timer.getTime() << " microseconds" << endl;
+				}
       }
 #endif
 
@@ -703,35 +703,36 @@ int main( int argc, char *argv[] )
     catch( const string& error ){
 
       if( loglevel >= 1 ){
-	logfile << endl << error << endl << endl;
+				logfile << endl << error << endl << endl;
       }
 
       if( response.errorIsSet() ){
-	if( loglevel >= 4 ){
-	  logfile << "---" << endl <<
-	    response.formatResponse() <<
-	    endl << "---" << endl;
-	}
-	if( writer.printf( response.formatResponse().c_str() ) == -1 ){
-	  if( loglevel >= 1 ) logfile << "Error sending IIPResponse" << endl;
-	}
+				if( loglevel >= 4 ){
+					logfile << "---" << endl <<
+						response.formatResponse() <<
+						endl << "---" << endl;
+				}
+				if( writer.printf( response.formatResponse().c_str() ) == -1 ){
+					if( loglevel >= 1 ) logfile << "Error sending IIPResponse" << endl;
+				}
       }
       else{
-	/* Display our advertising banner ;-)
-	 */
-	writer.printf( response.getAdvert( version ).c_str() );
+				/* Display our advertising banner ;-)
+				 */
+				writer.printf( response.getAdvert( version ).c_str() );
       }
 
     }
 
+		// ed todo: returning a 404 on e.g. a failure of TIFFReadEncodedTile is somewhat deceiving
     // Image file errors
     catch( const file_error& error ){
       string status = "Status: 404 Not Found\r\nServer: iipsrv/" + version + "\r\n\r\n" + error.what();
       writer.printf( status.c_str() );
       writer.flush();
       if( loglevel >= 2 ){
-	logfile << error.what() << endl;
-	logfile << "Sending HTTP 404 Not Found" << endl;
+				logfile << error.what() << endl;
+				logfile << "Sending HTTP 404 Not Found" << endl;
       }
     }
 
@@ -741,8 +742,8 @@ int main( int argc, char *argv[] )
       writer.printf( status.c_str() );
       writer.flush();
       if( loglevel >= 2 ){
-	logfile << error.what() << endl;
-	logfile << "Sending HTTP 400 Bad Request" << endl;
+				logfile << error.what() << endl;
+				logfile << "Sending HTTP 400 Bad Request" << endl;
       }
     }
 
@@ -751,7 +752,7 @@ int main( int argc, char *argv[] )
     catch( ... ){
 
       if( loglevel >= 1 ){
-	logfile << "Error: Default Catch: " << endl << endl;
+				logfile << "Error: Default Catch: " << endl << endl;
       }
 
       /* Display our advertising banner ;-)

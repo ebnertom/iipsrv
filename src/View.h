@@ -102,7 +102,8 @@ class View{
     rotation = 0.0; flip = 0;
     maintain_aspect = true;
     allow_upscaling = true;
-    colourspace = NONE;
+    colourspace = NONE,
+	bit_depth = 8;
   };
 
 

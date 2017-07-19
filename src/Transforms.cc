@@ -21,6 +21,7 @@
 
 
 #include <cmath>
+#include <cstdint>
 #include <sstream>
 #include "Transforms.h"
 
@@ -448,177 +449,82 @@ void filter_inv( RawTile& in ){
   }
 }
 
-
-
 // Resize image using nearest neighbour interpolation
-void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){
-
-  // Pointer to input buffer
-  unsigned char *input = (unsigned char*) in.data;
-
-  int channels = in.channels;
-  unsigned int width = in.width;
-  unsigned int height = in.height;
-
-  // Pointer to output buffer
-  unsigned char *output;
-
-  // Create new buffer if size is larger than input size
-  bool new_buffer = false;
-  if( resampled_width*resampled_height > in.width*in.height ){
-    new_buffer = true;
-    output = new unsigned char[resampled_width*resampled_height*in.channels];
+void filter_interpolate_nearestneighbour( RawTile& in, unsigned int resampled_width, unsigned int resampled_height, int out_bpc ){
+  switch( out_bpc ){
+  case 8:
+    filter_interpolate_nearestneighbour<uint8_t>( in, resampled_width, resampled_height );
+    break;
+  case 16:
+    filter_interpolate_nearestneighbour<uint16_t>( in, resampled_width, resampled_height );
+    break;
+  case 32:
+    filter_interpolate_nearestneighbour<float>( in, resampled_width, resampled_height );
+    break;
+  default:
+    std::stringstream ss;
+    ss << out_bpc;
+    throw string("output depth of ") + ss.str() + "not supported";
   }
-  else output = (unsigned char*) in.data;
-
-  // Calculate our scale
-  float xscale = (float)width / (float)resampled_width;
-  float yscale = (float)height / (float)resampled_height;
-
-  for( unsigned int j=0; j<resampled_height; j++ ){
-    for( unsigned int i=0; i<resampled_width; i++ ){
-
-      // Indexes in the current pyramid resolution and resampled spaces
-      // Make sure to limit our input index to the image surface
-      unsigned int ii = (unsigned int) floorf(i*xscale);
-      unsigned int jj = (unsigned int) floorf(j*yscale);
-      unsigned int pyramid_index = (unsigned int) channels * ( ii + jj*width );
-
-      unsigned int resampled_index = (i + j*resampled_width)*channels;
-      for( int k=0; k<in.channels; k++ ){
-	output[resampled_index+k] = input[pyramid_index+k];
-      }
-    }
-  }
-
-  // Delete original buffer
-  if( new_buffer ) delete[] (unsigned char*) input;
-
-  // Correctly set our Rawtile info
-  in.width = resampled_width;
-  in.height = resampled_height;
-  in.dataLength = resampled_width * resampled_height * channels * in.bpc/8;
-  in.data = output;
 }
-
 
 
 // Resize image using bilinear interpolation
 //  - Floating point implementation which benchmarks about 2.5x slower than nearest neighbour
-void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height ){
-
-  // Pointer to input buffer
-  unsigned char *input = (unsigned char*) in.data;
-
-  int channels = in.channels;
-  unsigned int width = in.width;
-  unsigned int height = in.height;
-
-  // Create new buffer and pointer for our output
-  unsigned char *output = new unsigned char[resampled_width*resampled_height*in.channels];
-
-  // Calculate our scale
-  float xscale = (float)(width) / (float)resampled_width;
-  float yscale = (float)(height) / (float)resampled_height;
-
-
-  // Do not parallelize for small images (256x256 pixels) as this can be slower that single threaded
-#if defined(__ICC) || defined(__INTEL_COMPILER)
-#pragma ivdep
-#elif defined(_OPENMP)
-#pragma omp parallel for if( resampled_width*resampled_height > PARALLEL_THRESHOLD )
-#endif
-  for( unsigned int j=0; j<resampled_height; j++ ){
-
-    // Index to the current pyramid resolution's top left pixel
-    int jj = (int) floor( j*yscale );
-
-    // Calculate some weights - do this in the highest loop possible
-    float jscale = j*yscale;
-    float c = (float)(jj+1) - jscale;
-    float d = jscale - (float)jj;
-
-    for( unsigned int i=0; i<resampled_width; i++ ){
-
-      // Index to the current pyramid resolution's top left pixel
-      int ii = (int) floor( i*xscale );
-
-      // Calculate the indices of the 4 surrounding pixels
-      unsigned int p11, p12, p21, p22;
-      p11 = (unsigned int) ( channels * ( ii + jj*width ) );
-      p12 = (unsigned int) ( channels * ( ii + (jj+1)*width ) );
-      p21 = (unsigned int) ( channels * ( (ii+1) + jj*width ) );
-      p22 = (unsigned int) ( channels * ( (ii+1) + (jj+1)*width ) );
-
-      // Calculate the rest of our weights
-      float iscale = i*xscale;
-      float a = (float)(ii+1) - iscale;
-      float b = iscale - (float)ii;
-
-      // Output buffer index
-      unsigned int resampled_index = j*resampled_width*in.channels + i*in.channels;
-
-      for( int k=0; k<in.channels; k++ ){
-	float tx = input[p11+k]*a + input[p21+k]*b;
-	float ty = input[p12+k]*a + input[p22+k]*b;
-	unsigned char r = (unsigned char)( c*tx + d*ty );
-	output[resampled_index+k] = r;
-      }
-    }
+void filter_interpolate_bilinear( RawTile& in, unsigned int resampled_width, unsigned int resampled_height, int out_bpc ){
+  switch( out_bpc ){
+  case 8:
+    filter_interpolate_bilinear<uint8_t>( in, resampled_width, resampled_height );
+    break;
+  case 16:
+    filter_interpolate_bilinear<uint16_t>( in, resampled_width, resampled_height );
+    break;
+  case 32:
+    filter_interpolate_bilinear<float>( in, resampled_width, resampled_height );
+    break;
+  default:
+    std::stringstream ss;
+    ss << out_bpc;
+    throw string("output depth of ") + ss.str() + "not supported";
   }
-
-  // Delete original buffer
-  delete[] (unsigned char*) input;
-
-  // Correctly set our Rawtile info
-  in.width = resampled_width;
-  in.height = resampled_height;
-  in.dataLength = resampled_width * resampled_height * channels * in.bpc/8;
-  in.data = output;
 }
 
 // Function to apply a contrast adjustment and outputs the desired bit depth
 void filter_contrast( RawTile& in, float c, int outBpc ){
-	switch( outBpc ){
-	case 8:
-		filter_contrast<unsigned char>( in, c );
-		break;
-	case 16:
-		filter_contrast<unsigned short>( in, c );
-		break;
-	case 32:
-		filter_contrast<float>( in, c );
-		break;
-	default:
-		std::stringstream ss;
-		ss << outBpc;
-		throw string("output depth of ") + ss.str() + "not supported";
-	}
+  switch( outBpc ){
+  case 8:
+    filter_contrast<uint8_t>( in, c );
+    break;
+  case 16:
+    filter_contrast<uint16_t>( in, c );
+    break;
+  case 32:
+    filter_contrast<float>( in, c );
+    break;
+  default:
+    std::stringstream ss;
+    ss << outBpc;
+    throw string("output depth of ") + ss.str() + "not supported";
+  }
 }
 
-// Function to apply a contrast adjustment and clip to 8 bit
-//void filter_contrast( RawTile& in, float c ){
-//  unsigned long np = in.width * in.height * in.channels;
-//  unsigned char* buffer = new unsigned char[np];
-//  float* infptr = (float*)in.data;
-//
-//#if defined(__ICC) || defined(__INTEL_COMPILER)
-//#pragma ivdep
-//#elif defined(_OPENMP)
-//#pragma omp parallel for
-//#endif
-//  for( unsigned long n=0; n<np; n++ ){
-//    float v = infptr[n] * 255.0 * c;
-//    buffer[n] = (unsigned char)( (v<255.0) ? (v<0.0? 0.0 : v) : 255.0 );
-//  }
-//
-//  // Replace original buffer with new
-//  delete[] (float*) in.data;
-//  in.data = buffer;
-//  in.bpc = 8;
-//  in.dataLength = np * in.bpc/8;
-//}
-
+void filter_flatten( RawTile& in, int bands, int outBpc ){
+  switch( outBpc ){
+  case 8:
+    filter_flatten<uint8_t>( in, bands );
+    break;
+  case 16:
+    filter_flatten<uint16_t>( in, bands );
+    break;
+  case 32:
+    filter_flatten<float>( in, bands );
+    break;
+  default:
+    std::stringstream ss;
+    ss << outBpc;
+    throw string("output depth of ") + ss.str() + "not supported";
+  }
+}
 
 // Gamma correction
 void filter_gamma( RawTile& in, float g ){
@@ -796,34 +702,6 @@ void filter_twist( RawTile& rawtile, const vector< vector<float> >& matrix ){
   delete[] nrows;
   delete[] pixel;
 }
-
-
-//ed todo: support 16-bit
-// Flatten a multi-channel image to a given number of bands by simply stripping
-// away extra bands
-void filter_flatten( RawTile& in, int bands ){
-
-  // We cannot increase the number of channels
-  if( bands >= in.channels ) return;
-
-  unsigned long np = in.width * in.height;
-  unsigned long ni = 0;
-  unsigned long no = 0;
-  unsigned int gap = in.channels - bands;
-
-  // Simply loop through assigning to the same buffer
-  for( unsigned long i=0; i<np; i++ ){
-    for( int k=0; k<bands; k++ ){
-      ((unsigned char*)in.data)[ni++] = ((unsigned char*)in.data)[no++];
-    }
-    no += gap;
-  }
-
-  in.channels = bands;
-  in.dataLength = ni * in.bpc/8;
-}
-
-
 
 //ed todo: support 16-bit
 // Flip image in horizontal or vertical direction (0=horizontal,1=vertical)

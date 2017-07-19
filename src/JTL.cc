@@ -207,7 +207,7 @@ void JTL::send( Session* session, int resolution, int tile ){
       *(session->logfile) << "JTL :: Flattening channels to " << bands;
       function_timer.start();
     }
-    filter_flatten( rawtile, bands );
+    filter_flatten( rawtile, bands, 8 );
     if( session->loglevel >= 4 ){
       *(session->logfile) << " in " << function_timer.getTime() << " microseconds" << endl;
     }

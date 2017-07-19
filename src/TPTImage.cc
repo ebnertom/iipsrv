@@ -186,9 +186,8 @@ void TPTImage::closeImage()
   }
 }
 
-
 RawTile TPTImage::getTile( int seq, int ang, unsigned int res, int layers, unsigned int tile ) throw (file_error)
-{
+{  
   uint32 im_width, im_height, tw, th, ntlx, ntly;
   uint32 rem_x, rem_y;
   uint16 colour;

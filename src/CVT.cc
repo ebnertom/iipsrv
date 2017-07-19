@@ -40,6 +40,10 @@ void CVT::send( Session* session ){
   this->session = session;
   checkImage();
 
+	// ed todo: I don't like these checks, would rather ask the compressor if supported
+	if( session->view->getBitDepth() == 16 && session->outputCompressor != session->png ){
+		throw string( "unsupported format: 16bpp JPEG requested" );
+	}
 
   // Time this command
   if( session->loglevel >= 2 ) command_timer.start();
@@ -183,8 +187,8 @@ void CVT::send( Session* session ){
     }
   }  
 
-  // Only use our floating point pipeline if necessary
-  // ed todo: need to get output bit depth from the caller
+  // Only use our floating point pipeline if necessary  
+	// at this point 
   if( complete_image.bpc > 8 || session->view->floatProcessing() ){
    
     // Apply normalization and perform float conversion
@@ -194,7 +198,7 @@ void CVT::send( Session* session ){
 	  }
       filter_normalize( complete_image, (*session->image)->max, (*session->image)->min );
       if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Converting to floating point and normalizing in "
+				*(session->logfile) << "CVT :: Converting to floating point and normalizing in "
 					<< function_timer.getTime() << " microseconds" << endl;
       }
     }
@@ -205,7 +209,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_shade( complete_image, session->view->shade[0], session->view->shade[1] );
       if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Applying hill-shading in " << function_timer.getTime() << " microseconds" << endl;
+				*(session->logfile) << "CVT :: Applying hill-shading in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -215,7 +219,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_twist( complete_image, session->view->ctw );
       if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Applying color twist in " << function_timer.getTime() << " microseconds" << endl;
+				*(session->logfile) << "CVT :: Applying color twist in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -226,7 +230,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_gamma( complete_image, gamma );
       if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Applying gamma of " << gamma << " in "
+				*(session->logfile) << "CVT :: Applying gamma of " << gamma << " in "
 			    << function_timer.getTime() << " microseconds" << endl;
       }
     }
@@ -237,7 +241,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_inv( complete_image );
       if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Applying inversion in " << function_timer.getTime() << " microseconds" << endl;
+				*(session->logfile) << "CVT :: Applying inversion in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -247,27 +251,24 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_cmap( complete_image, session->view->cmap );
       if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Applying color map in " << function_timer.getTime() << " microseconds" << endl;
+				*(session->logfile) << "CVT :: Applying color map in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
 
-    // Apply any contrast adjustments and/or clip from 16bit or 32bit to 8bit
-    {
-      if( session->loglevel >= 5 ) function_timer.start();
-      filter_contrast( complete_image, session->view->getContrast(), session->view->getBitDepth() );
-      if( session->loglevel >= 5 ){
-		*(session->logfile) << "CVT :: Applying contrast of " << session->view->getContrast()
-			    << " and converting to 8bit in " << function_timer.getTime() << " microseconds" << endl;
-      }
+    // Apply any contrast adjustments and potentially scale to the requested output bit depth    
+    if( session->loglevel >= 5 ) function_timer.start();
+    filter_contrast( complete_image, session->view->getContrast(), session->view->getBitDepth() );
+    if( session->loglevel >= 5 ){
+			*(session->logfile) << "CVT :: Applying contrast of " << session->view->getContrast()
+			  << " and converting to 8bit in " << function_timer.getTime() << " microseconds" << endl;
     }
-  }
+  }  
 
-
+	// at this point in the command, complete_image.bpc reflects the output bit depth
 
   // Resize our image as requested. Use the interpolation method requested in the server configuration.
-  //  - Use bilinear interpolation by default
-  // ed todo: interpolation assumes 8bit input and changes back to 8bit
+  //  - Use bilinear interpolation by default  
   if( (view_width!=resampled_width) || (view_height!=resampled_height) ){
 
     string interpolation_type;
@@ -277,11 +278,11 @@ void CVT::send( Session* session ){
     switch( interpolation ){
      case 0:
       interpolation_type = "nearest neighbour";
-      filter_interpolate_nearestneighbour( complete_image, resampled_width, resampled_height );
+      filter_interpolate_nearestneighbour( complete_image, resampled_width, resampled_height, complete_image.bpc );
       break;
      default:
       interpolation_type = "bilinear";
-      filter_interpolate_bilinear( complete_image, resampled_width, resampled_height );
+      filter_interpolate_bilinear( complete_image, resampled_width, resampled_height, complete_image.bpc );
       break;
     }
 
@@ -290,15 +291,14 @@ void CVT::send( Session* session ){
 			  << function_timer.getTime() << " microseconds" << endl;
     }
   }
-
-
+ 
   // Reduce to 1 or 3 bands if we have an alpha channel or a multi-band image
   if( (complete_image.channels==2) || (complete_image.channels>3 ) ){
 
     int output_channels = (complete_image.channels==2)? 1 : 3;
     if( session->loglevel >= 5 ) function_timer.start();
-
-    filter_flatten( complete_image, output_channels );
+	
+    filter_flatten( complete_image, output_channels, complete_image.bpc );
 
     if( session->loglevel >= 5 ){
       *(session->logfile) << "CVT :: Flattening to " << output_channels << " channel"

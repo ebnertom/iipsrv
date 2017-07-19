@@ -49,7 +49,7 @@ Task* Task::factory( const string& t ){
   else if( type == "rgn" ) return new RGN;
   else if( type == "rot" ) return new ROT;
   else if( type == "til" ) return new TIL;
-//  else if( type == "ptl" ) return new PTL;
+  else if( type == "ptl" ) return new PTL;
   else if( type == "jtl" ) return new JTL;
   else if( type == "jtls" ) return new JTLS;
   else if( type == "icc" ) return new ICC;
@@ -64,6 +64,7 @@ Task* Task::factory( const string& t ){
   else if( type == "deepzoom" ) return new DeepZoom;
   else if( type == "ctw" ) return new CTW;
   else if( type == "iiif" ) return new IIIF;
+	else if( type == "bits" ) return new BITS;	
   else return NULL;
 
 }
@@ -83,6 +84,7 @@ void QLT::run( Session* session, const string& argument ){
   if( argument.length() ){
     int factor;
 
+		// ed todo: integrate PTL command
     // we would need a PTL command in order to support this
     if ( session->outputCompressor == session->png ) {
       factor = Environment::PNGFilterTypeToInt(argument.c_str() );
@@ -118,18 +120,21 @@ void QLT::run( Session* session, const string& argument ){
 }
 
 void BITS::run( Session* session, const string& argument ){
-  int bpp = atoi( argument.c_str() );
-  switch( bpp ){
-  case 8:
-  case 16:
-    break;
-  default:
-    if ( session->loglevel >= 2 ){
-      *(session->logfile) << "BITS :: bit depth of " << argument << " out of bounds. Valid values are 8, 16" << endl;
-    }
-  }
+  int bpc = atoi( argument.c_str() );
+#ifdef HAVE_PNG
+	int supportedBpc[] = {8, 16};
+#elif
+	int supportedBpc[] = {8};
+#endif
 
-  session->view->setBitDepth( bpp );
+	if( std::find(std::begin(supportedBpc), std::end(supportedBpc), bpc) ){
+		// we have to deal with incompatible bit depth / output formats downstream
+		// as we won't yet know if e.g. the client requested 16bpp JPEG
+		session->view->setBitDepth( bpc );
+	}
+	else{
+		throw string("BITS :: output bit depth of ") + argument + " not supported";
+	}	
 }
 
 void SDS::run( Session* session, const string& argument ){
@@ -204,17 +209,27 @@ void CVT::run( Session* session, const string& src ){
   string argument = src;
   transform( argument.begin(), argument.end(), argument.begin(), ::tolower );
 
-  // For the moment, only deal with JPEG. If we have specified something else, give a warning
-  // and send JPEG anyway
-#ifdef HAVE_PNG
-  if( argument != "jpeg" && argument != "png" ) {
-#else
-  if( argument != "jpeg" ) {
-#endif
-    if( session->loglevel >= 1 ) *(session->logfile) << "CVT :: Unsupported output format request: '" << argument << "'. Sending JPEG." << endl;
+	// ed todo: add HAVE_PNG macro back in
+  if( argument == "jpeg" ){
+	  session->outputCompressor = session->jpeg;
+		if( session->loglevel >= 3 ){ 
+			*(session->logfile) << "CVT :: JPEG output" << endl;
+		}
   }
+#ifdef HAVE_PNG
+  else if( argument == "png" ){
+		if( session->loglevel >= 3 ){ 
+			*(session->logfile) << "CVT :: PNG output" << endl;
+		}
+	  session->outputCompressor = session->png;
+  }
+#endif
   else{
-    if( session->loglevel >= 3 ) *(session->logfile) << "CVT :: JPEG output" << endl;
+		// default to JPEG
+	  if( session->loglevel >= 1 ){
+			*(session->logfile) << "CVT :: Unsupported output format request: '" << argument << "'. Sending JPEG." << endl;
+	  }
+	  session->outputCompressor = session->jpeg;
   }
 
   this->send( session );
@@ -348,7 +363,6 @@ void JTL::run( Session* session, const string& argument ){
   // Send out the requested tile
   this->send( session, resolution, tile );
 }
-
 
 void SHD::run( Session* session, const string& argument ){
 

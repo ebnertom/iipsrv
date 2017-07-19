@@ -233,7 +233,7 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
   // Define our compression names
   switch( rawtile->compressionType ){
     case JPEG: compName = "JPEG"; break;	
-	case PNG: compName = "PNG"; break;
+    case PNG: compName = "PNG"; break;
     case DEFLATE: compName = "DEFLATE"; break;
     case UNCOMPRESSED: compName = "UNCOMPRESSED"; break;
     default: break;
@@ -256,22 +256,22 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
     
     // Crop if this is an edge tile
     if( ( (ttt.width != image->getTileWidth()) || (ttt.height != image->getTileHeight()) ) && ttt.padded ){
-	  if( loglevel >= 5 ) * logfile << "TileManager :: Cropping tile" << endl;
-	  this->crop( &ttt );
+      if( loglevel >= 5 ) * logfile << "TileManager :: Cropping tile" << endl;
+      this->crop( &ttt );
     }
 
     if( loglevel >=2 ) compression_timer.start();
     unsigned int oldlen = rawtile->dataLength;
     unsigned int newlen = c == JPEG ? jpeg->Compress( ttt ) : png->Compress( ttt );
     if( loglevel >= 2 ){ 
-		*logfile << "TileManager :: JPEG requested, but UNCOMPRESSED compression found in cache." << endl
-				<< "TileManager :: JPEG Compression Time: "
-				<< compression_timer.getTime() << " microseconds" << endl
-				<< "TileManager :: Compression Ratio: " << newlen << "/" << oldlen << " = "
-				<< ( (float)newlen/(float)oldlen ) << endl;
+	    *logfile << "TileManager :: JPEG requested, but UNCOMPRESSED compression found in cache." << endl
+			    << "TileManager :: JPEG Compression Time: "
+			    << compression_timer.getTime() << " microseconds" << endl
+			    << "TileManager :: Compression Ratio: " << newlen << "/" << oldlen << " = "
+			    << ( (float)newlen/(float)oldlen ) << endl;
 
-		insert_timer.start();
-	}
+	    insert_timer.start();
+    }
 
     // Add our compressed tile to the cache
     tileCache->insert( ttt );
@@ -282,7 +282,7 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
 
       *logfile << "TileManager :: Total Tile Access Time: "
                << tile_timer.getTime() << " microseconds" << endl;
-	}
+    }
 
     return RawTile( ttt );
   }
@@ -306,7 +306,7 @@ bool isValidCompressionScheme( CompressionType ct, const RawTile* input ){
 
 
 RawTile TileManager::getRegion( unsigned int res, int seq, int ang, int layers, unsigned int x, unsigned int y, unsigned int width, unsigned int height ){
-
+  
   // If our image type can directly handle region compositing, simply return that
   if( image->regionDecoding() ){
     if( loglevel >= 3 ){
