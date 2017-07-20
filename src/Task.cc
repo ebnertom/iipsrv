@@ -83,8 +83,7 @@ void QLT::run( Session* session, const string& argument ){
 
   if( argument.length() ){
     int factor;
-
-		// ed todo: integrate PTL command
+    
     // we would need a PTL command in order to support this
     if ( session->outputCompressor == session->png ) {
       factor = Environment::PNGFilterTypeToInt(argument.c_str() );
@@ -114,9 +113,7 @@ void QLT::run( Session* session, const string& argument ){
     }
 
     session->outputCompressor->setQuality( factor );
-
   }
-
 }
 
 void BITS::run( Session* session, const string& argument ){
@@ -208,28 +205,27 @@ void CVT::run( Session* session, const string& src ){
   // Put the argument into lower case
   string argument = src;
   transform( argument.begin(), argument.end(), argument.begin(), ::tolower );
-
-	// ed todo: add HAVE_PNG macro back in
+	
   if( argument == "jpeg" ){
-	  session->outputCompressor = session->jpeg;
-		if( session->loglevel >= 3 ){ 
-			*(session->logfile) << "CVT :: JPEG output" << endl;
-		}
+    session->outputCompressor = session->jpeg;
+    if( session->loglevel >= 3 ){ 
+	    *(session->logfile) << "CVT :: JPEG output" << endl;
+    }
   }
 #ifdef HAVE_PNG
   else if( argument == "png" ){
-		if( session->loglevel >= 3 ){ 
-			*(session->logfile) << "CVT :: PNG output" << endl;
-		}
-	  session->outputCompressor = session->png;
+    if( session->loglevel >= 3 ){ 
+	    *(session->logfile) << "CVT :: PNG output" << endl;
+    }
+    session->outputCompressor = session->png;
   }
 #endif
   else{
-		// default to JPEG
-	  if( session->loglevel >= 1 ){
-			*(session->logfile) << "CVT :: Unsupported output format request: '" << argument << "'. Sending JPEG." << endl;
-	  }
-	  session->outputCompressor = session->jpeg;
+    // default to JPEG
+    if( session->loglevel >= 1 ){
+		  *(session->logfile) << "CVT :: Unsupported output format request: '" << argument << "'. Sending JPEG." << endl;
+    }
+    session->outputCompressor = session->jpeg;
   }
 
   this->send( session );

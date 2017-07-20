@@ -251,7 +251,6 @@ class Environment {
     return allow_upscaling;
   }
 
-// ed todo: remove all references to HAVE_PNG, make standard
 #ifdef HAVE_PNG
 
   /****************************************

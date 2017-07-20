@@ -27,17 +27,16 @@
 #include <glob.h>
 #endif
 
-#if _MSC_VER
-#define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
-// ed todo: need to use _stat64 in order to read attrs on files > 4GB
-#endif
-
 #include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <algorithm>
 #include <sys/stat.h>
 
+#ifdef _WIN32
+#define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
+#define stat _stat64
+#endif
 
 using namespace std;
 

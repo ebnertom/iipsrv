@@ -249,7 +249,7 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
 
   // Check whether the compression used for our tile matches our requested compression type.
   // If not, we must convert 
-  if( ( c == JPEG || c == PNG ) && rawtile->compressionType == UNCOMPRESSED && isValidCompressionScheme( c, rawtile ) ){  // ed todo: check for PNG	
+  if( ( c == JPEG || c == PNG ) && rawtile->compressionType == UNCOMPRESSED && isValidCompressionScheme( c, rawtile ) ){
 
     // Rawtile is a pointer to the cache data, so we need to create a copy of it in case we compress it
     RawTile ttt( *rawtile );
@@ -264,7 +264,7 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
     unsigned int oldlen = rawtile->dataLength;
     unsigned int newlen = c == JPEG ? jpeg->Compress( ttt ) : png->Compress( ttt );
     if( loglevel >= 2 ){ 
-	    *logfile << "TileManager :: JPEG requested, but UNCOMPRESSED compression found in cache." << endl
+	    *logfile << "TileManager :: JPEG or PNG requested, but UNCOMPRESSED compression found in cache." << endl
 			    << "TileManager :: JPEG Compression Time: "
 			    << compression_timer.getTime() << " microseconds" << endl
 			    << "TileManager :: Compression Ratio: " << newlen << "/" << oldlen << " = "
@@ -296,9 +296,9 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
 bool isValidCompressionScheme( CompressionType ct, const RawTile* input ){
   switch ( ct ){
   case JPEG:
-    return input->bpc == 8 && (input->channels == 1 || input->channels == 3);
+    return input->bpc == 8 && ( input->channels == 1 || input->channels == 3 );
   case PNG:
-    return ( input->bpc == 8 || input->bpc == 16 ) && (input->channels == 1 || input->channels == 3);
+    return ( input->bpc == 8 || input->bpc == 16 ) && ( input->channels >= 1 && input->channels <= 4 );
   default:
     return false;
   }

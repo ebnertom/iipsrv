@@ -39,10 +39,9 @@ void CVT::send( Session* session ){
 
   this->session = session;
   checkImage();
-
-  // ed todo: I don't like these checks, would rather ask the compressor if supported
+  
   if( session->view->getBitDepth() == 16 && session->outputCompressor != session->png ){
-	  throw string( "unsupported format: 16bpp JPEG requested" );
+    throw string( "unsupported format: 16bpp JPEG requested" );
   }
 
   // Time this command
@@ -173,10 +172,7 @@ void CVT::send( Session* session ){
 						  session->view->xangle, session->view->yangle,
 						  session->view->getLayers(),
 						  view_left, view_top, view_width, view_height );
-
-
-
-  // ed todo: filter_LAB2sRGB assumes 8 bit input
+  
   // Convert CIELAB to sRGB
   if( (*session->image)->getColourSpace() == CIELAB ){
     if( session->loglevel >= 5 ) function_timer.start();

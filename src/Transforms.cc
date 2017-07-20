@@ -53,9 +53,9 @@ static bool isfinite( float arg )
 #define PARALLEL_THRESHOLD 65536
 
 
-static const float _sRGB[3][3] = { {  3.240479, -1.537150, -0.498535 },
-				   { -0.969256, 1.875992, 0.041556 },
-				   { 0.055648, -0.204043, 1.057311 } };
+static const float _sRGB[3][3] = { {  3.240479f, -1.537150f, -0.498535f },
+				   { -0.969256f, 1.875992f, 0.041556f },
+				   { 0.055648f, -0.204043f, 1.057311f } };
 
 using namespace std;
 
@@ -350,8 +350,8 @@ void filter_cmap( RawTile& in, enum cmap_type cmap ){
   unsigned out_chan = 3;
   unsigned int ndata = in.dataLength * 8 / in.bpc;
 
-  const float max3 = 1.0/3.0;
-  const float max8 = 1.0/8.0;
+  const float max3 = 1.0f/3.0f;
+  const float max8 = 1.0f/8.0f;
 
   float *fptr = (float*)in.data;
   float *outptr = new float[ndata*out_chan];

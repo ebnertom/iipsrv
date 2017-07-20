@@ -419,7 +419,7 @@ void IIIF::run( Session* session, const string& src )
       if ( session->loglevel >= 4 ){
         *(session->logfile) << "IIIF :: Requested Size: " << requested_width << "x" << requested_height << endl;
       }
-    }
+    }        
 
     // Rotation Parameter
     if ( izer.hasMoreTokens() ){
@@ -454,10 +454,10 @@ void IIIF::run( Session* session, const string& src )
         if ( session->view->flip != 0 ) *(session->logfile) << " with horizontal flip";
         *(session->logfile) << endl;
       }
-    }
+    }    
 
     // Quality and Format Parameters
-    if ( izer.hasMoreTokens() ){
+    if ( izer.hasMoreTokens() ){      
       string format = "jpg";
       string quality = izer.nextToken();
       transform( quality.begin(), quality.end(), quality.begin(), ::tolower );
@@ -477,37 +477,38 @@ void IIIF::run( Session* session, const string& src )
 #endif
         }
 #ifdef HAVE_PNG
-        if ( format == "png" )
-            session->outputCompressor=session->png;
+        if ( format == "png" ){
+	  session->outputCompressor=session->png;
+	}
 #endif
       }	  
 			
       // Quality / bit-depth	  
       if (quality == "color" || quality == "default"){        
-	      session->view->setBitDepth(8);
+	session->view->setBitDepth(8);
       }
       else if (quality == "native"){
-	      // if the output bit depth/format combo is unsupported an error is generated downstream
-	      session->view->setBitDepth((*session->image)->bpc);
+	// if the output bit depth/format combo is unsupported an error is generated downstream
+	session->view->setBitDepth((*session->image)->bpc);
       }
       else if ( quality == "grey" || quality == "gray" ){
-	      session->view->colourspace = GREYSCALE;
-	      session->view->setBitDepth((*session->image)->bpc);
+	session->view->colourspace = GREYSCALE;
+	session->view->setBitDepth((*session->image)->bpc);
       }
       else{
-	      // IIIF image spec 2.1 says the image server SHOULD return a 400 error but if we want to support JPG and PNG
-	      // lossy quality we might consider enabling a syntax that allows clients to fine tune the quality
-	      // by manipulating the URL as the QLT factor of the IIP Protocol currently allows, e.g. default.90.jpg for JPEG 
-	      // or default.PNG_FILTER_AVG.png for PNG, etc.  In consulting with the IIIF spec authors, this has been discussed
-	      // but there were insufficient use cases to justify the spec taking it up right now.
-	      // see https://github.com/IIIF/iiif.io/issues/294 for the history - @beaudet
-	      throw invalid_argument( "unsupported quality parameter - must be one of native, color or grey" );
+	// IIIF image spec 2.1 says the image server SHOULD return a 400 error but if we want to support JPG and PNG
+	// lossy quality we might consider enabling a syntax that allows clients to fine tune the quality
+	// by manipulating the URL as the QLT factor of the IIP Protocol currently allows, e.g. default.90.jpg for JPEG 
+	// or default.PNG_FILTER_AVG.png for PNG, etc.  In consulting with the IIIF spec authors, this has been discussed
+	// but there were insufficient use cases to justify the spec taking it up right now.
+	// see https://github.com/IIIF/iiif.io/issues/294 for the history - @beaudet
+	throw invalid_argument( "unsupported quality parameter - must be one of native, color or grey" );
       }
 
       numOfTokens++;
 
       if ( session->loglevel >= 4 ){
-		      *(session->logfile) << "IIIF :: Requested Quality: " << quality << " with format: " << format << endl;
+	*(session->logfile) << "IIIF :: Requested Quality: " << quality << " with format: " << format << endl;
       }
 }
 
@@ -579,11 +580,16 @@ void IIIF::run( Session* session, const string& src )
     unsigned int i = view_left / tw;
     unsigned int j = view_top / th;
     unsigned int tile = (j * ntlx) + i;
-
-	// ed todo: support PNG here
-    // Simply pass this on to our JTL send command
-    JTL jtl;
-    jtl.send( session, requested_res, tile );
+	
+    // Simply pass this on to our JTL/PTL send command  
+    if( session->outputCompressor == session->jpeg ){
+      JTL jtl;
+      jtl.send( session, requested_res, tile );
+    }
+    else{
+      PTL ptl;
+      ptl.send( session, requested_res, tile );
+    }
 
   }
   else{
