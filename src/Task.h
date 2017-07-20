@@ -217,14 +217,6 @@ class FIF : public Task {
   void run( Session* session, const std::string& argument );
 };
 
-
-/// PNG Tile Command
-/*class PTL : public Task {
- public:
-  void run( Session* session, const std::string& argument );
-};*/
-
-
 /// JPEG Tile Export Command
 class JTL : public Task {
  public:
@@ -235,7 +227,7 @@ class JTL : public Task {
       @param resolution requested image resolution
       @param tile requested tile index
    */
-  void send( Session* session, int resolution, int tile );
+  virtual void send( Session* session, int resolution, int tile );
 };
 
 class PTL : public JTL {

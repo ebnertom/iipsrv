@@ -71,29 +71,27 @@ void PNGCompressor::InitCompression( const RawTile& rawtile, unsigned int strip_
   // Set up the correct width and height for this particular tile
   width = rawtile.width;
   height = rawtile.height;
-  channels = rawtile.channels;
-  bpp = rawtile.getBytesPerPixel();
+  channels = rawtile.channels;  
+  bpp = rawtile.bpc / 8;
+  
+  if( channels < 1 || channels > 4 ){
+    throw string( "PNGCompressor:: only 1, 2, 3, or 4 channels are supported, with or without alpha values." );
+  }  
+
+  if ( rawtile.bpc != 8 && rawtile.bpc != 16 ){
+    throw string( "PNGCompressor:: only 8 or 16 bit input data supported." );
+  }
 
   // see png_write_data where data structure, size, and mx are dealt with
   dest.mx = 1024;                           // allocated a reasonably sized header
   dest.data = new unsigned char[dest.mx];   // data will be resized during writing if necessary
-  dest.size = 0;                            // starts with no actual data written
-
-  // Make sure we only try to compress images with 1 or 3 channels with ir without alpha
-  if ( ! ( (channels==1) || (channels==2) || (channels==3) || (channels==4))  ){
-    throw string( "PNGCompressor:: currently only either 1 or 3 channels are supported with or without alpha values." );
-  }  
-
-  if ( rawtile.bpc != 8 && rawtile.bpc != 16 ){
-	  throw string( "PNGCompressor:: only 8 or 16 bpc output supported" );
-  }
+  dest.size = 0;                            // starts with no actual data written  
 
   dest.png_ptr = png_create_write_struct( PNG_LIBPNG_VER_STRING, NULL,
                                           (png_error_ptr)png_cexcept_error, (png_error_ptr)NULL );
 
-
   if (!dest.png_ptr){
-	  throw string( "PNGCompressor:: Error allocacating png_structp." );
+    throw string( "PNGCompressor:: Error allocacating png_structp." );
   }
 
   dest.info_ptr = png_create_info_struct(dest.png_ptr);
@@ -116,7 +114,6 @@ void PNGCompressor::InitCompression( const RawTile& rawtile, unsigned int strip_
    but it probably makes sense to provide a tunable configuration for this
   *******************************************************************/
   png_set_filter(dest.png_ptr, 0, filterType );
-
   png_set_write_fn( dest.png_ptr, (png_voidp) &dest, png_write_data, png_flush );
   
   png_set_IHDR( 
@@ -134,15 +131,15 @@ void PNGCompressor::InitCompression( const RawTile& rawtile, unsigned int strip_
   // Write the header information at this point
   png_write_info(dest.png_ptr, dest.info_ptr);
 
-   // this call *must* come after the call to png_write_info
+  // this call *must* come after the call to png_write_info
   // so that the bit depth is set on png_ptr. if not, it is
   // set to 0 and the call to png_set_swap will be a no-op
-  if (rawtile.bpc > 8){	  
-	  // multi-byte PNG's are 'network' order, or big endian.
-	  // data comes in as little endian, this call accounts for that.
-	  png_set_swap(dest.png_ptr);
-	  // note: if we ever support packed pixel images, we need to make
-	  // a call to png_set_packswap for bpc < 8
+  if (bpp > 1){	  
+    // multi-byte PNG's are 'network' order, or big endian.
+    // data comes in as little endian, this call accounts for that.
+    png_set_swap(dest.png_ptr);
+    // note: if we ever support packed pixel images, we need to make
+    // a call to png_set_packswap for bpc < 8
   }
 }
 
@@ -185,41 +182,28 @@ unsigned int PNGCompressor::Finish(unsigned char *o, unsigned long olen) throw (
 }
 
 
-int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {
-
-  logfile << "PNGCompressor::Compress - !!!!!!!! NOT IMPLEMENTED - IIP DOESN'T !!!!!!" << endl;
-
-/*************************************************************************************************************
- If the IIP Protocol is going to be extended with a PTL command for producing PNG tiles, this would have to be
- implemented.  For now, I only need support via the CVT operation so I'm leaving this out - but CompressStrip
- and the CVT command already provide pretty much everything that would have to happen and Ruven has already
- implemented most of it below
-*************************************************************************************************************/
- 
-/*
- PNG OUTPUT SUPPORT
-  Timer partoffunction;
-  Timer entirefunction;
-  entirefunction.start();
-
-  png_byte    **ppbRowPointers = NULL;
-  const int   ciBitDepth = 8;
-  png_uint_32 ulRowBytes;
+int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {     
 
   // Set up the correct width and height for this particular tile
   width = rawtile.width;
   height = rawtile.height;
   channels = rawtile.channels;
+  int bytesPerChannel = rawtile.bpc / 8;   
 
-  // Make sure we only try to compress images with 1 or 3 channels
-  if( ! ( (channels==1) || (channels==2) || (channels==3) || (channels==4))  ){
-    throw string( "PNGCompressor:: currently only either 1 or 3 channels are supported with or without alpha values." );
+  if( channels < 1 || channels > 4 ){
+    throw string( "PNGCompressor:: only 1, 2, 3, or 4 channels are supported, with or without alpha values." );
   }
+
+  if( rawtile.bpc != 8 && rawtile.bpc != 16 ){
+    throw string( "PNGCompressor:: only 8 or 16 bit input data supported." );
+  }   
 
   dest.png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL,
                                          (png_error_ptr)png_cexcept_error, (png_error_ptr)NULL);
 
-  if( !dest.png_ptr ) throw string( "PNGCompressor:: Error allocacating png_structp" );
+  if( !dest.png_ptr ){ 
+    throw string( "PNGCompressor:: Error allocacating png_structp" );
+  }
 
   dest.info_ptr = png_create_info_struct(dest.png_ptr);
   if (! dest.info_ptr) {
@@ -228,39 +212,50 @@ int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {
   }
 
   dest.size = 0;
-  dest.mx =  rawtile.dataLength;  //initial PNG size
-  dest.data = new unsigned char[width*height*channels];
-
+  dest.mx =  rawtile.dataLength;  //initial PNG size  
+  dest.data = new unsigned char[width*height*channels*bytesPerChannel];
 
   png_set_write_fn( dest.png_ptr, (png_voidp) &dest, png_write_data, png_flush );
 
-  // We're going to write a very simple 3x8 bit RGB image
-  png_set_IHDR( dest.png_ptr, dest.info_ptr, width, height, ciBitDepth,
+  png_set_IHDR( dest.png_ptr, 
+		dest.info_ptr, 
+		width, height, 
+		rawtile.bpc,
                 (channels<3) ? ((channels==2) ? PNG_COLOR_TYPE_GRAY_ALPHA : PNG_COLOR_TYPE_GRAY): ((channels==4) ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB),
                 PNG_INTERLACE_NONE, 
                 PNG_COMPRESSION_TYPE_BASE,
                 PNG_FILTER_TYPE_BASE );
 
-  // Set the zlib compression level
-  //png_set_compression_level( dest.png_ptr, Z_BEST_SPEED );
-  png_set_compression_level( dest.png_ptr, Z_NO_COMPRESSION );
-  png_set_filter(dest.png_ptr, NULL, PNG_NO_FILTERS);
+  // Set the zlib compression level  
+  png_set_compression_level( dest.png_ptr, compressionLevel );
+  png_set_filter(dest.png_ptr, NULL, filterType);
 
   // Write the file header information
-  png_write_info( dest.png_ptr, dest.info_ptr );
+  png_write_info( dest.png_ptr, dest.info_ptr );     
 
-  // row_bytes is the width x number of channels
-  ulRowBytes = width * channels;
+  // this call *must* come after the call to png_write_info
+  // so that the bit depth is set on png_ptr. if not, it is
+  // set to 0 and the call to png_set_swap will be a no-op
+  if (bytesPerChannel > 1){	  
+    // multi-byte PNG's are 'network' order, or big endian.
+    // data comes in as little endian, this call accounts for that.
+    png_set_swap(dest.png_ptr);
+    // note: if we ever support packed pixel images, we need to make
+    // a call to png_set_packswap for bit depths < 8
+  }
 
-  try {
+  png_byte **ppbRowPointers = NULL;
+  png_uint_32 ulRowBytes = width * channels * bytesPerChannel;
 
-    // Allocate memory for an array of row-pointers
-    if ((ppbRowPointers = (png_bytepp) malloc(height * sizeof(png_bytep))) == NULL)
+  try {    
+    
+    if ((ppbRowPointers = (png_bytepp) malloc(height * sizeof(png_bytep))) == NULL){
       throw "PNGCompressor:: Out of memory";
+    }
 
     // Set the individual row-pointers to point at the correct offsets
     for (int i = 0; i < height; i++){
-      ppbRowPointers[i] = (png_byte*)((unsigned char*)rawtile.data + i *ulRowBytes);
+      ppbRowPointers[i] = (png_byte*)((unsigned char*)rawtile.data + i * ulRowBytes);
     }
 
     // Write out the entire image data in one call
@@ -270,16 +265,17 @@ int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {
     png_write_end(dest.png_ptr,  dest.info_ptr);
 
     // We're done
-    free (ppbRowPointers);
+    free(ppbRowPointers);
     ppbRowPointers = NULL;
 
     // Clean up after the write, and free any memory allocated
     png_destroy_write_struct(&(dest.png_ptr), (png_infopp) NULL);
-
   }
   catch (char * msg){
     png_destroy_write_struct(&(dest.png_ptr), (png_infopp) NULL);
-    if(ppbRowPointers) free (ppbRowPointers);
+    if(ppbRowPointers){ 
+      free (ppbRowPointers);
+    }
     return 0;
   }
 
@@ -289,7 +285,7 @@ int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {
     rawtile.data = new unsigned char[dest.size];
   }
 
-  rawtile.dataLength = dest.size;
+  rawtile.dataLength = dest.size;  
   memcpy( rawtile.data, dest.data, rawtile.dataLength );
   delete[] dest.data;
   dest.data = NULL;
@@ -298,14 +294,9 @@ int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {
 
   // Set the tile compression type
   rawtile.compressionType = PNG;
-  rawtile.quality = 100;  // PNG is not compressed
+  rawtile.quality = 100;  // PNG is lossless   
 
-  //logfile << "PNGCOMPRESSOR::Compress Total compression time " << entirefunction.getTime() << " microseconds" << endl;
-
-  // Return the size of the data we have compressed
-  return rawtile.dataLength;
-*/
-  return 0;
+  return rawtile.dataLength;  
 }
 
 void PNGCompressor::addXMPMetadata( const string& xmp_metadata ){

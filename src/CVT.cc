@@ -40,10 +40,10 @@ void CVT::send( Session* session ){
   this->session = session;
   checkImage();
 
-	// ed todo: I don't like these checks, would rather ask the compressor if supported
-	if( session->view->getBitDepth() == 16 && session->outputCompressor != session->png ){
-		throw string( "unsupported format: 16bpp JPEG requested" );
-	}
+  // ed todo: I don't like these checks, would rather ask the compressor if supported
+  if( session->view->getBitDepth() == 16 && session->outputCompressor != session->png ){
+	  throw string( "unsupported format: 16bpp JPEG requested" );
+  }
 
   // Time this command
   if( session->loglevel >= 2 ) command_timer.start();
@@ -194,12 +194,12 @@ void CVT::send( Session* session ){
     // Apply normalization and perform float conversion
     {
       if( session->loglevel >= 5 ){
-		  function_timer.start();
-	  }
+	function_timer.start();
+      }
       filter_normalize( complete_image, (*session->image)->max, (*session->image)->min );
       if( session->loglevel >= 5 ){
-				*(session->logfile) << "CVT :: Converting to floating point and normalizing in "
-					<< function_timer.getTime() << " microseconds" << endl;
+	*(session->logfile) << "CVT :: Converting to floating point and normalizing in "
+		<< function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -209,7 +209,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_shade( complete_image, session->view->shade[0], session->view->shade[1] );
       if( session->loglevel >= 5 ){
-				*(session->logfile) << "CVT :: Applying hill-shading in " << function_timer.getTime() << " microseconds" << endl;
+	*(session->logfile) << "CVT :: Applying hill-shading in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -219,7 +219,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_twist( complete_image, session->view->ctw );
       if( session->loglevel >= 5 ){
-				*(session->logfile) << "CVT :: Applying color twist in " << function_timer.getTime() << " microseconds" << endl;
+	*(session->logfile) << "CVT :: Applying color twist in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -230,8 +230,8 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_gamma( complete_image, gamma );
       if( session->loglevel >= 5 ){
-				*(session->logfile) << "CVT :: Applying gamma of " << gamma << " in "
-			    << function_timer.getTime() << " microseconds" << endl;
+	*(session->logfile) << "CVT :: Applying gamma of " << gamma << " in "
+			     << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -241,7 +241,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_inv( complete_image );
       if( session->loglevel >= 5 ){
-				*(session->logfile) << "CVT :: Applying inversion in " << function_timer.getTime() << " microseconds" << endl;
+	*(session->logfile) << "CVT :: Applying inversion in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -251,7 +251,7 @@ void CVT::send( Session* session ){
       if( session->loglevel >= 5 ) function_timer.start();
       filter_cmap( complete_image, session->view->cmap );
       if( session->loglevel >= 5 ){
-				*(session->logfile) << "CVT :: Applying color map in " << function_timer.getTime() << " microseconds" << endl;
+	*(session->logfile) << "CVT :: Applying color map in " << function_timer.getTime() << " microseconds" << endl;
       }
     }
 
@@ -260,8 +260,8 @@ void CVT::send( Session* session ){
     if( session->loglevel >= 5 ) function_timer.start();
     filter_contrast( complete_image, session->view->getContrast(), session->view->getBitDepth() );
     if( session->loglevel >= 5 ){
-			*(session->logfile) << "CVT :: Applying contrast of " << session->view->getContrast()
-			  << " and converting to 8bit in " << function_timer.getTime() << " microseconds" << endl;
+      *(session->logfile) << "CVT :: Applying contrast of " << session->view->getContrast()
+	<< " and converting to 8bit in " << function_timer.getTime() << " microseconds" << endl;
     }
   }  	
 

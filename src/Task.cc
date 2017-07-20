@@ -64,7 +64,7 @@ Task* Task::factory( const string& t ){
   else if( type == "deepzoom" ) return new DeepZoom;
   else if( type == "ctw" ) return new CTW;
   else if( type == "iiif" ) return new IIIF;
-	else if( type == "bits" ) return new BITS;	
+  else if( type == "bits" ) return new BITS;	
   else return NULL;
 
 }

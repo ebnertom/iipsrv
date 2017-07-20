@@ -20,7 +20,9 @@
 
 
 
-// ed todo: 404's are returning data and not throwing a bad status code
+// ed todo: 404's are returning data and not throwing a bad status code 
+// ed todo: some operations (e.g. TIFFReadEncodedTile throws a file_error) are returning 404 when it should be 500
+// ed todo: add TIFFError/WarnHandler and log (stems from issue I had reading jpeg compressed TIFFs)
 
 #include <fcgiapp.h>
 
@@ -593,15 +595,14 @@ int main( int argc, char *argv[] )
 	}
 
 	task = Task::factory( command );
-	if( task ) task->run( &session, argument );
-
-
-	if( !task ){
+	if( task ){ 
+	  task->run( &session, argument );
+	}
+	else{
 	  if( loglevel >= 1 ) logfile << "Unsupported command: " << command << endl;
 	  // Unsupported command error code is 2 2
 	  response.setError( "2 2", command );
 	}
-
 
 	// Delete our task
 	if( task ){
