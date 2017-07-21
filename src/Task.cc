@@ -49,7 +49,9 @@ Task* Task::factory( const string& t ){
   else if( type == "rgn" ) return new RGN;
   else if( type == "rot" ) return new ROT;
   else if( type == "til" ) return new TIL;
+#ifdef HAVE_PNG
   else if( type == "ptl" ) return new PTL;
+#endif
   else if( type == "jtl" ) return new JTL;
   else if( type == "jtls" ) return new JTLS;
   else if( type == "icc" ) return new ICC;
@@ -84,7 +86,7 @@ void QLT::run( Session* session, const string& argument ){
   if( argument.length() ){
     int factor;
     
-    // we would need a PTL command in order to support this
+#ifdef HAVE_PNG
     if ( session->outputCompressor == session->png ) {
       factor = Environment::PNGFilterTypeToInt(argument.c_str() );
 
@@ -99,7 +101,9 @@ void QLT::run( Session* session, const string& argument ){
     }
 
     // JPEG is default
-    else {
+    else 
+#endif
+    {
 
       factor = atoi( argument.c_str() );
 
@@ -120,7 +124,7 @@ void BITS::run( Session* session, const string& argument ){
   int bpc = atoi( argument.c_str() );
 #ifdef HAVE_PNG
 	int supportedBpc[] = {8, 16};
-#elif
+#else
 	int supportedBpc[] = {8};
 #endif
 
@@ -343,6 +347,11 @@ void JTLS::run( Session* session, const string& argument ){
 
 }
 
+void parseTileRequest( const string &argument, int* resolution, int* tile ){
+  int delimitter = argument.find( "," );
+  *resolution = atoi( argument.substr( 0, delimitter ).c_str() );
+  *tile = atoi( argument.substr( delimitter + 1, argument.length() ).c_str() );
+}
 
 void JTL::run( Session* session, const string& argument ){
 
@@ -352,13 +361,29 @@ void JTL::run( Session* session, const string& argument ){
   */
 
   // Parse the argument list
-  int delimitter = argument.find( "," );
-  int resolution = atoi( argument.substr( 0, delimitter ).c_str() );
-  int tile = atoi( argument.substr( delimitter + 1, argument.length() ).c_str() );
+  int resolution = 0, tile = 0;
+  parseTileRequest( argument, &resolution, &tile );
 
   // Send out the requested tile
   this->send( session, resolution, tile );
 }
+
+#ifdef HAVE_PNG
+void PTL::run( Session* session, const string& argument ){
+
+  /* The argument should consist of 2 comma separated values:
+     1) resolution
+     2) tile number
+  */
+
+  // Parse the argument list
+  int resolution = 0, tile = 0;
+  parseTileRequest( argument, &resolution, &tile );
+
+  // Send out the requested tile
+  this->send( session, resolution, tile );
+}
+#endif
 
 void SHD::run( Session* session, const string& argument ){
 

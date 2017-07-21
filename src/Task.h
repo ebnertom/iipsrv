@@ -227,11 +227,12 @@ class JTL : public Task {
       @param resolution requested image resolution
       @param tile requested tile index
    */
-  virtual void send( Session* session, int resolution, int tile );
+  void send( Session* session, int resolution, int tile );
 };
 
 class PTL : public JTL {
  public:  
+  void run( Session* session, const std::string& argument );
   /// Send out a single tile in PNG format
   /** @param session our current session
       @param resolution requested image resolution

@@ -39,8 +39,8 @@ void CVT::send( Session* session ){
 
   this->session = session;
   checkImage();
-  
-  if( session->view->getBitDepth() == 16 && session->outputCompressor != session->png ){
+
+  if( session->view->getBitDepth() == 16 && session->outputCompressor == session->jpeg ){
     throw string( "unsupported format: 16bpp JPEG requested" );
   }
 
@@ -167,7 +167,12 @@ void CVT::send( Session* session ){
 
 
   // Get our requested region from our TileManager
+#ifdef HAVE_PNG
   TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->png, session->logfile, session->loglevel );
+#else
+  TileManager tilemanager( session->tileCache, *session->image, session->watermark, session->jpeg, session->logfile, session->loglevel );
+#endif
+
   RawTile complete_image = tilemanager.getRegion( requested_res,
 						  session->view->xangle, session->view->yangle,
 						  session->view->getLayers(),

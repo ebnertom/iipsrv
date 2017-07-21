@@ -581,22 +581,24 @@ void IIIF::run( Session* session, const string& src )
     unsigned int j = view_top / th;
     unsigned int tile = (j * ntlx) + i;
 	
-    // Simply pass this on to our JTL/PTL send command  
-    if( session->outputCompressor == session->jpeg ){
-      JTL jtl;
-      jtl.send( session, requested_res, tile );
+      // Simply pass this on to our JTL/PTL send command  
+#ifdef HAVE_PNG
+      if( session->outputCompressor == session->png ){
+	PTL ptl;
+	ptl.send( session, requested_res, tile );	
+      }
+      else
+#endif
+      {
+	JTL jtl;
+	jtl.send( session, requested_res, tile );
+      }
     }
     else{
-      PTL ptl;
-      ptl.send( session, requested_res, tile );
+      // Otherwise do a CVT style region request
+      CVT cvt;
+      cvt.send( session );
     }
-
-  }
-  else{
-    // Otherwise do a CVT style region request
-    CVT cvt;
-    cvt.send( session );
-  }
 
   // Total IIIF response time
   if ( session->loglevel >= 2 ){

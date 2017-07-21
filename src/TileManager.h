@@ -27,7 +27,9 @@
 #include <fstream>
 
 #include "JPEGCompressor.h"
+#ifdef HAVE_PNG
 #include "PNGCompressor.h"
+#endif
 #include "RawTile.h"
 #include "IIPImage.h"
 #include "Cache.h"
@@ -45,7 +47,9 @@ class TileManager{
 
   Cache* tileCache;
   JPEGCompressor* jpeg;
+#ifdef HAVE_PNG
   PNGCompressor* png;
+#endif
   IIPImage* image;
   Watermark* watermark;
   std::ofstream* logfile;
@@ -86,15 +90,26 @@ class TileManager{
    * @param s  pointer to output file stream
    * @param l  logging level
    */
+#ifdef HAVE_PNG
   TileManager( Cache* tc, IIPImage* im, Watermark* w, JPEGCompressor* j, PNGCompressor* p, std::ofstream* s, int l ){
     tileCache = tc; 
     image = im;
     watermark = w;
     jpeg = j;
-	png = p;
+    png = p;
     logfile = s ;
     loglevel = l;
   };
+#else
+   TileManager( Cache* tc, IIPImage* im, Watermark* w, JPEGCompressor* j, std::ofstream* s, int l ){
+    tileCache = tc; 
+    image = im;
+    watermark = w;
+    jpeg = j;    
+    logfile = s ;
+    loglevel = l;
+  };
+#endif
 
 
 

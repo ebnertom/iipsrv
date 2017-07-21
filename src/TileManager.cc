@@ -181,8 +181,8 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
       if( (rawtile = tileCache->getTile( image->getImagePath(), resolution, tile,
 					 xangle, yangle, UNCOMPRESSED, 0 )) ) break;
       break;
-	  
-	case PNG:
+#ifdef HAVE_PNG	  
+    case PNG:
       if( (rawtile = tileCache->getTile( image->getImagePath(), resolution, tile,
 					  xangle, yangle, PNG, png->getQuality() )) ) break;
       if( (rawtile = tileCache->getTile( image->getImagePath(), resolution, tile,
@@ -190,7 +190,7 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
       if( (rawtile = tileCache->getTile( image->getImagePath(), resolution, tile,
 					 xangle, yangle, UNCOMPRESSED, 0 )) ) break;
       break;
-
+#endif
     case DEFLATE:
 
       if( (rawtile = tileCache->getTile( image->getImagePath(), resolution, tile,
@@ -232,8 +232,10 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
 
   // Define our compression names
   switch( rawtile->compressionType ){
-    case JPEG: compName = "JPEG"; break;	
+    case JPEG: compName = "JPEG"; break;
+#ifdef HAVE_PNG
     case PNG: compName = "PNG"; break;
+#endif
     case DEFLATE: compName = "DEFLATE"; break;
     case UNCOMPRESSED: compName = "UNCOMPRESSED"; break;
     default: break;
@@ -249,7 +251,11 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
 
   // Check whether the compression used for our tile matches our requested compression type.
   // If not, we must convert 
+#ifdef HAVE_PNG
   if( ( c == JPEG || c == PNG ) && rawtile->compressionType == UNCOMPRESSED && isValidCompressionScheme( c, rawtile ) ){
+#else
+  if( c == JPEG && rawtile->compressionType == UNCOMPRESSED ){
+#endif
 
     // Rawtile is a pointer to the cache data, so we need to create a copy of it in case we compress it
     RawTile ttt( *rawtile );
@@ -262,7 +268,11 @@ RawTile TileManager::getTile( int resolution, int tile, int xangle, int yangle, 
 
     if( loglevel >=2 ) compression_timer.start();
     unsigned int oldlen = rawtile->dataLength;
+#ifdef HAVE_PNG
     unsigned int newlen = c == JPEG ? jpeg->Compress( ttt ) : png->Compress( ttt );
+#else
+    unsigned int newlen = jpeg->Compress( ttt );
+#endif
     if( loglevel >= 2 ){ 
 	    *logfile << "TileManager :: JPEG or PNG requested, but UNCOMPRESSED compression found in cache." << endl
 			    << "TileManager :: JPEG Compression Time: "
