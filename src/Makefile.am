@@ -18,7 +18,7 @@ iipsrv_fcgi_LDADD += OpenJPEGImage.o
 endif
 
 if ENABLE_PNG
-iipsrv_fcgi_LDADD += PNGCompressor.o # PTL.o -- for now, PNG motivation is primarily for PNG for IIIF compliance, not a new IIP Protocol command
+iipsrv_fcgi_LDADD += PNGCompressor.o PTL.o
 endif
 
 if ENABLE_MODULES
@@ -35,8 +35,6 @@ iipsrv_fcgi_SOURCES = \
 			Compressor.h \
 			JPEGCompressor.h \
 			JPEGCompressor.cc \
-			PNGCompressor.h \
-			PNGCompressor.cc \
 			RawTile.h \
 			Timer.h \
 			Cache.h \
@@ -57,7 +55,6 @@ iipsrv_fcgi_SOURCES = \
 			OBJ.cc \
 			FIF.cc \
 			JTL.cc \
-			PTL.cc \
 			TIL.cc \
 			ICC.cc \
 			CVT.cc \
