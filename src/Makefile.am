@@ -35,6 +35,8 @@ iipsrv_fcgi_SOURCES = \
 			Compressor.h \
 			JPEGCompressor.h \
 			JPEGCompressor.cc \
+			PNGCompressor.h \
+			PNGCompressor.cc \
 			RawTile.h \
 			Timer.h \
 			Cache.h \
@@ -55,6 +57,7 @@ iipsrv_fcgi_SOURCES = \
 			OBJ.cc \
 			FIF.cc \
 			JTL.cc \
+			PTL.cc \
 			TIL.cc \
 			ICC.cc \
 			CVT.cc \

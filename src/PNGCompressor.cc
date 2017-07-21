@@ -23,6 +23,14 @@
 #include "Timer.h"
 #include "zlib.h"
 
+using namespace std;
+
+void PNGCompressor::setOutputBuffer(unsigned char* output, unsigned int allocatedSize){
+  dest.data = output;
+  dest.mx = allocatedSize;
+  dest.size = 0;
+}
+
 static void png_write_data(png_structp png_ptr, png_bytep payload, png_size_t length)
 {
 #ifdef DEBUG
@@ -228,7 +236,7 @@ int PNGCompressor::Compress( RawTile& rawtile ) throw (string) {
 
   // Set the zlib compression level  
   png_set_compression_level( dest.png_ptr, compressionLevel );
-  png_set_filter(dest.png_ptr, NULL, filterType);
+  png_set_filter(dest.png_ptr, 0, filterType);
 
   // Write the file header information
   png_write_info( dest.png_ptr, dest.info_ptr );     
@@ -341,6 +349,41 @@ void PNGCompressor::addXMPMetadata( const string& xmp_metadata ){
   png_write_chunk( dest.png_ptr, chunktype, chunk.data(), chunksize );
 
 }
+
+string PNGCompressor::getMimeType(){
+  return "image/png"; 
+}
+
+unsigned int PNGCompressor::getHeaderSize(){ 
+  return dest.size; 
+};
+
+unsigned char* PNGCompressor::getHeader() { 
+  return (unsigned char*) dest.data; 
+};
+
+void PNGCompressor::finishHeader(){ 
+  if ( dest.data != NULL )
+    delete[] dest.data;
+  dest.data = NULL;
+  dest.size = 0;
+  dest.mx = 0;
+};
+
+int PNGCompressor::getQuality( ){
+  return filterType;
+}
+
+void PNGCompressor::setQuality( int quality ){
+  filterType = quality;
+  if ( quality != PNG_FILTER_SUB   && 
+       quality != PNG_FILTER_UP    && 
+       quality != PNG_FILTER_AVG   && 
+       quality != PNG_FILTER_PAETH && 
+       quality != PNG_ALL_FILTERS )
+    filterType = PNG_FILTER_NONE;
+}
+
 
 /********************************************************************************************************************
 void PNGCompressor.writeICCProfile(...) {

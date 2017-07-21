@@ -19,8 +19,8 @@
 */
 
 
-#ifndef _PNGCOMPRESSOR_H
-#define _PNGCOMPRESSOR_H
+#ifndef PNGCOMPRESSOR_H
+#define PNGCOMPRESSOR_H
 
 ///* get internal access to png.h */
 
@@ -31,8 +31,6 @@
 #include <png.h>
 #include "RawTile.h"
 #include "Compressor.h"
-
-using namespace std;
 
 /// Expanded data destination object for buffered output used by PNG library
 
@@ -65,11 +63,7 @@ private:
   int filterType;            /**< png compression filter type - see png.h */
 
   /// Set output buffer to the given byte pointer with preallocated size 
-  void setOutputBuffer(unsigned char* output, unsigned int allocatedSize) {
-    dest.data = output;
-    dest.mx = allocatedSize;
-    dest.size = 0;
-  }
+  void setOutputBuffer(unsigned char* output, unsigned int allocatedSize);
 
 public:
 
@@ -126,44 +120,20 @@ public:
   void addXMPMetadata( const std::string& m ) OVERRIDE;
 
   /// get mime type for this compressor
-  std::string getMimeType() OVERRIDE { 
-    return "image/png"; 
-  }
+  std::string getMimeType() OVERRIDE;
 
   /// Return the image header size - returns the header length if called at the right time
-  unsigned int getHeaderSize() OVERRIDE { 
-    return dest.size; 
-  };
+  unsigned int getHeaderSize() OVERRIDE;
 
   /// Return a pointer to the image header itself - returns the header if called at the right time
-  unsigned char* getHeader() OVERRIDE { 
-    return (unsigned char*) dest.data; 
-  };
+  unsigned char* getHeader() OVERRIDE;
 
   /// Dump any header data
-  void finishHeader() OVERRIDE { 
-    if ( dest.data != NULL )
-      delete[] dest.data;
-    dest.data = NULL;
-    dest.size = 0;
-    dest.mx = 0;
-  };
+  void finishHeader() OVERRIDE;
 
-  int getQuality( ) OVERRIDE {
-    return filterType;
-  }
+  int getQuality( ) OVERRIDE;
 
-  void setQuality( int quality ) OVERRIDE {
-    filterType = quality;
-    if ( quality != PNG_FILTER_SUB   && 
-         quality != PNG_FILTER_UP    && 
-         quality != PNG_FILTER_AVG   && 
-         quality != PNG_FILTER_PAETH && 
-         quality != PNG_ALL_FILTERS )
-      filterType = PNG_FILTER_NONE;
-  }
-
-
+  void setQuality( int quality ) OVERRIDE;
 };
 
 #endif

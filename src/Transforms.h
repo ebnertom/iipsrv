@@ -24,8 +24,12 @@
 
 #include <vector>
 #include <limits>
-//#include "Time.h"
+#include <math.h>
 #include "RawTile.h"
+
+/* Size threshold for using parallel loops (256x256 pixels)
+ */
+#define PARALLEL_THRESHOLD 65536
 
 template<class T>
 bool isBitDepthMatch( int b ){

@@ -48,10 +48,6 @@ static bool isfinite( float arg )
 #define D65_Y0 100.0
 #define D65_Z0 108.8827
 
-/* Size threshold for using parallel loops (256x256 pixels)
- */
-#define PARALLEL_THRESHOLD 65536
-
 
 static const float _sRGB[3][3] = { {  3.240479f, -1.537150f, -0.498535f },
 				   { -0.969256f, 1.875992f, 0.041556f },
