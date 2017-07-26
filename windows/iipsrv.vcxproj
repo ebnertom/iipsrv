@@ -3,7 +3,7 @@
   <PropertyGroup Label="UserMacros">
     <HAVE_KDU>False</HAVE_KDU>
     <HAVE_MEMCACHED_WIN>False</HAVE_MEMCACHED_WIN>
-    <HAVE_PNG>False</HAVE_PNG>
+    <HAVE_PNG>True</HAVE_PNG>
     <KDU_LIB_NAME Condition="'$(HAVE_KDU)'=='False'">
     </KDU_LIB_NAME>
     <KDU_LIB_NAME Condition="'$(HAVE_KDU)'=='True'">kdu_v72R.lib;</KDU_LIB_NAME>
@@ -181,7 +181,7 @@ copy "$(ProjectDir)\dependencies\dlls\x86\$(Configuration)\libfcgi.dll" "$(OutDi
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_USE_MATH_DEFINES;CORESYS_IMPORTS;VERSION="1.0";HAVE_TIME_H;_BASETSD_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;HAVE_PNG;NDEBUG;_CONSOLE;_USE_MATH_DEFINES;CORESYS_IMPORTS;VERSION="1.0";HAVE_TIME_H;_BASETSD_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)\dependencies\includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -225,7 +225,7 @@ copy "$(ProjectDir)\dependencies\dlls\x64\$(Configuration)\libtiff.dll" "$(OutDi
       <ExcludedFromBuild Condition="'$(HAVE_PNG)'=='False'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\src\PTL.cc">
-      <ExcludedFromBuild Condition="'$(HAVE_KDU)'=='False'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(HAVE_PNG)'=='False'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\src\SPECTRA.cc" />
     <ClCompile Include="..\src\Task.cc" />
