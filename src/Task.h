@@ -26,6 +26,7 @@
 
 #include <string>
 #include <fstream>
+#include <vector>
 #include "IIPImage.h"
 #include "IIPResponse.h"
 #include "JPEGCompressor.h"
@@ -58,13 +59,26 @@ typedef HASHMAP <std::string,IIPImage> imageCacheMapType;
 #endif
 
 
+struct fcc_color {
+  int r, g, b;
 
+  static fcc_color from_int(int color)
+  {
+    fcc_color ret;
+    ret.r = (color & 0xFF0000) >> 16;
+    ret.g = (color & 0xFF00) >> 8;
+    ret.b = color & 0xFF;
+    return ret;
+  }
+};
 
 
 
 /// Structure to hold our session data
 struct Session {
   IIPImage **image;
+  // used when we have a composite image command
+  std::vector<IIPImage*> images;
   Compressor* outputCompressor;
   JPEGCompressor* jpeg;
 #ifdef HAVE_PNG
@@ -340,10 +354,22 @@ class CTW : public Task {
   void run( Session* session, const std::string& argument );
 };
 
+
 /// BITS Command
 class BITS : public Task {
  public:
   void run( Session* session, const std::string& argument );
+};
+
+
+/// FCC Command
+class FCC : public Task {
+public:
+  void run( Session* session, const std::string& argument );
+
+  /// Send out our requested region
+  /** @param session our current session */
+  void send( Session* session, const std::vector<fcc_color> &colors );
 };
 
 

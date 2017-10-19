@@ -188,8 +188,7 @@ void CVT::send( Session* session ){
     }
   }  
 
-  // Only use our floating point pipeline if necessary  
-	// at this point 
+  // Only use our floating point pipeline if necessary at this point 
   if( complete_image.bpc > 8 || session->view->floatProcessing() ){
    
     // Apply normalization and perform float conversion

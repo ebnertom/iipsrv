@@ -23,7 +23,9 @@
 #include "Tokenizer.h"
 #include <cstdlib>
 #include <algorithm>
-
+#include <string>
+#include <sstream>
+#include <vector>
 
 using namespace std;
 
@@ -66,7 +68,8 @@ Task* Task::factory( const string& t ){
   else if( type == "deepzoom" ) return new DeepZoom;
   else if( type == "ctw" ) return new CTW;
   else if( type == "iiif" ) return new IIIF;
-  else if( type == "bits" ) return new BITS;	
+  else if( type == "bits" ) return new BITS;
+  else if( type == "fcc" ) return new FCC;
   else return NULL;
 
 }
@@ -123,19 +126,19 @@ void QLT::run( Session* session, const string& argument ){
 void BITS::run( Session* session, const string& argument ){
   int bpc = atoi( argument.c_str() );
 #ifdef HAVE_PNG
-	int supportedBpc[] = {8, 16};
+  int supportedBpc[] = {8, 16};
 #else
-	int supportedBpc[] = {8};
+  int supportedBpc[] = {8};
 #endif
 
-	if( std::find(std::begin(supportedBpc), std::end(supportedBpc), bpc) ){
-		// we have to deal with incompatible bit depth / output formats downstream
-		// as we won't yet know if e.g. the client requested 16bpp JPEG
-		session->view->setBitDepth( bpc );
-	}
-	else{
-		throw string("BITS :: output bit depth of ") + argument + " not supported";
-	}	
+  if( std::find(std::begin(supportedBpc), std::end(supportedBpc), bpc) ){
+    // we have to deal with incompatible bit depth / output formats downstream
+    // as we won't yet know if e.g. the client requested 16bpp JPEG
+    session->view->setBitDepth( bpc );
+  }
+  else{
+    throw string("BITS :: output bit depth of ") + argument + " not supported";
+  }	
 }
 
 void SDS::run( Session* session, const string& argument ){
@@ -213,13 +216,13 @@ void CVT::run( Session* session, const string& src ){
   if( argument == "jpeg" ){
     session->outputCompressor = session->jpeg;
     if( session->loglevel >= 3 ){ 
-	    *(session->logfile) << "CVT :: JPEG output" << endl;
+      *(session->logfile) << "CVT :: JPEG output" << endl;
     }
   }
 #ifdef HAVE_PNG
   else if( argument == "png" ){
     if( session->loglevel >= 3 ){ 
-	    *(session->logfile) << "CVT :: PNG output" << endl;
+      *(session->logfile) << "CVT :: PNG output" << endl;
     }
     session->outputCompressor = session->png;
   }
@@ -227,12 +230,47 @@ void CVT::run( Session* session, const string& src ){
   else{
     // default to JPEG
     if( session->loglevel >= 1 ){
-		  *(session->logfile) << "CVT :: Unsupported output format request: '" << argument << "'. Sending JPEG." << endl;
+      *(session->logfile) << "CVT :: Unsupported output format request: '" << argument << "'. Sending JPEG." << endl;
     }
     session->outputCompressor = session->jpeg;
   }
 
   this->send( session );
+}
+
+void FCC::run( Session* session, const string& argument ){  	
+  // parse colors for composite image
+  // scheme is FCC=RRGGBB,RRGGBB,...
+  // R, G, and B are hex values
+  // the number of tuplets must match the number of images
+  if( argument.empty() ) {
+    throw std::invalid_argument( "empty argument to FCC" );
+  }
+
+  std::stringstream ss( argument );
+  std::string item;  
+  std::vector<fcc_color> colors;
+
+  while( std::getline(ss, item, ',') ) {
+    if( item.size() != 6 ) {
+      throw std::invalid_argument( "invalid input to FCC: " + item + ". expected 6 digits" );
+    }
+    
+    try {
+      int value = std::stoi( item, nullptr, 16 );
+      colors.push_back( fcc_color::from_int( value ) );
+    }
+    catch( std::exception& ) {
+      throw std::invalid_argument( "invalid input to FCC: " + item );
+    }
+  }
+
+  // FIF will always run first, so this check is safe
+  if( session->images.size() != colors.size() ) {
+    throw std::invalid_argument( "FCC: number of colors does not match the number of input files to FIF" );
+  }
+
+  this->send( session, colors );
 }
 
 

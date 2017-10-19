@@ -20,6 +20,9 @@
 
 
 #include <algorithm>
+#include <string>
+#include <sstream>
+#include <vector>
 #include "Task.h"
 #include "URL.h"
 #include "Environment.h"
@@ -43,23 +46,29 @@ using namespace std;
 
 void FIF::run( Session* session, const string& src ){
 
-  if( session->loglevel >= 3 ) *(session->logfile) << "FIF handler reached" << endl;
+  if( session->loglevel >= 3 ) {
+    *(session->logfile) << "FIF handler reached" << endl;
+  }
 
   // Time this command
-  if( session->loglevel >= 2 ) command_timer.start();
-
+  if( session->loglevel >= 2 ) {
+    command_timer.start();
+  }
 
   // Decode any URL-encoded characters from our path
   URL url( src );
   string argument = url.decode();
 
-
   // Filter out any ../ to prevent users by-passing any file system prefix
   unsigned int n;
-  while( (n=argument.find("../")) < argument.length() ) argument.erase(n,3);
+  while( (n=argument.find("../")) < argument.length() ) {
+    argument.erase(n, 3);
+  }
 
   if( session->loglevel >=1 ){
-    if( url.warning().length() > 0 ) *(session->logfile) << "FIF :: " << url.warning() << endl;
+    if( url.warning().length() > 0 ) {
+      *(session->logfile) << "FIF :: " << url.warning() << endl;
+    }
     if( session->loglevel >= 5 ){
       *(session->logfile) << "FIF :: URL decoding/filtering: " << src << " => " << argument << endl;
     }
@@ -81,131 +90,165 @@ void FIF::run( Session* session, const string& src ){
 
   // Put the image setup into a try block as object creation can throw an exception
   try{
-
-    // Check whether cache is empty
-    if( session->imageCache->empty() ){
-      if( session->loglevel >= 1 ) *(session->logfile) << "FIF :: Image cache initialization" << endl;
-      test = IIPImage( argument );
-      test.setFileNamePattern( filename_pattern );
-      test.setFileSystemPrefix( filesystem_prefix );
-      test.Initialise();
+    // test for multiple images
+    std::stringstream ss(argument);
+    std::string item;
+    std::vector<string> parts;
+    while (std::getline(ss, item, ',')) {
+      parts.push_back(item);
     }
-    // If not, look up our object
-    else{
-      // Cache Hit
-      if( session->imageCache->find(argument) != session->imageCache->end() ){
-	test = (*session->imageCache)[ argument ];
-	timestamp = test.timestamp;       // Record timestamp if we have a cached image
-	if( session->loglevel >= 2 ){
-	  *(session->logfile) << "FIF :: Image cache hit. Number of elements: " << session->imageCache->size() << endl;
-	}
-      }
-      // Cache Miss
-      else{
-	if( session->loglevel >= 2 ) *(session->logfile) << "FIF :: Image cache miss" << endl;
-	test = IIPImage( argument );
+
+    *session->logfile << parts.size() << " images for output" << endl;
+
+    // todo: ugly, need better way to handle multiple images
+    for( auto &it=parts.begin(); it != parts.end(); ++it ) {
+      const string file = *it;
+      IIPImage *image;
+
+      // Check whether cache is empty
+      if( session->imageCache->empty() ){
+	if( session->loglevel >= 1 ) *(session->logfile) << "FIF :: Image cache initialization" << endl;
+	test = IIPImage( file );
 	test.setFileNamePattern( filename_pattern );
 	test.setFileSystemPrefix( filesystem_prefix );
 	test.Initialise();
-	// Delete items if our list of images is too long.
-	if( session->imageCache->size() >= MAXIMAGECACHE ) session->imageCache->erase( session->imageCache->begin() );
       }
-    }
-
-
-
-    /***************************************************************
-      Test for different image types - only TIFF is native for now
-    ***************************************************************/
-
-    ImageFormat format = test.getImageFormat();
-
-    if( format == TIF ){
-      if( session->loglevel >= 2 ) *(session->logfile) << "FIF :: TIFF image detected" << endl;
-      *session->image = new TPTImage( test );
-    }
-#if defined(HAVE_KAKADU) || defined(HAVE_OPENJPEG)
-    else if( format == JPEG2000 ){
-      if( session->loglevel >= 2 )
-        *(session->logfile) << "FIF :: JPEG2000 image detected" << endl;
-#if defined(HAVE_KAKADU)
-        *session->image = new KakaduImage( test );
-#elif defined(HAVE_OPENJPEG)
-        *session->image = new OpenJPEGImage( test );
-#endif
-    }
-#endif
-    else throw string( "Unsupported image type: " + argument );
-
-    /* Disable module loading for now!
-    else{
-
-#ifdef ENABLE_DL
-
-      // Check our map list for the requested type
-      if( moduleList.empty() ){
-	throw string( "Unsupported image type: " + imtype );
-      }
+      // If not, look up our object
       else{
-
-	map<string, string> :: iterator mod_it  = moduleList.find( imtype );
-
-	if( mod_it == moduleList.end() ){
-	  throw string( "Unsupported image type: " + imtype );
-	}
-	else{
-	  // Construct our dynamic loading image decoder
-	  session->image = new DSOImage( test );
-	  (*session->image)->Load( (*mod_it).second );
-
+	// Cache Hit
+	if( session->imageCache->find( file ) != session->imageCache->end() ){
+	  test = (*session->imageCache)[ file ];
+	  timestamp = test.timestamp;       // Record timestamp if we have a cached image
 	  if( session->loglevel >= 2 ){
-	    *(session->logfile) << "FIF :: Image type: '" << imtype
-	                        << "' requested ... using handler "
-				<< (*session->image)->getDescription() << endl;
+	    *(session->logfile) << "FIF :: Image cache hit. Number of elements: " << session->imageCache->size() << endl;
+	  }
+	}
+	// Cache Miss
+	else{
+	  if( session->loglevel >= 2 ) {
+	    *(session->logfile) << "FIF :: Image cache miss" << endl;
+	  }
+	  test = IIPImage( file );
+	  test.setFileNamePattern( filename_pattern );
+	  test.setFileSystemPrefix( filesystem_prefix );
+	  test.Initialise();
+	  // Delete items if our list of images is too long.
+	  if( session->imageCache->size() >= MAXIMAGECACHE ) {
+	    session->imageCache->erase( session->imageCache->begin() );
 	  }
 	}
       }
-#else
-      throw string( "Unsupported image type: " + imtype );
-#endif
-    }
-    */
 
+      /***************************************************************
+	Test for different image types - only TIFF is native for now
+      ***************************************************************/
 
-    // Open image and update timestamp
-    (*session->image)->openImage();
+      ImageFormat format = test.getImageFormat();
 
-    // Check timestamp consistency. If cached timestamp is older, update metadata
-    if( timestamp>0 && (timestamp < (*session->image)->timestamp) ){
-      if( session->loglevel >= 2 ){
-	*(session->logfile) << "FIF :: Image timestamp changed: reloading metadata" << endl;
+      if( format == TIF ){
+	if( session->loglevel >= 2 ) 
+	  *(session->logfile) << "FIF :: TIFF image detected" << endl;
+
+	image = new TPTImage( test );
+	// todo: still ugly
+	if (it == parts.begin() ) {
+	  *session->image = image;
+	}
+	session->images.push_back( image );
       }
-      (*session->image)->loadImageInfo( (*session->image)->currentX, (*session->image)->currentY );
-    }
+#if defined(HAVE_KAKADU) || defined(HAVE_OPENJPEG)
+      else if( format == JPEG2000 ){
+	if( session->loglevel >= 2 ) {
+	  *(session->logfile) << "FIF :: JPEG2000 image detected" << endl;
+	}
+#if defined(HAVE_KAKADU)
+	image = new KakaduImage( test );
+	// todo: still ugly
+	if (it == parts.begin() ) {
+	  *session->image = image;
+	}
+	session->images.push_back( image );
+#elif defined(HAVE_OPENJPEG)
+	image = new OpenJPEGImage( test );
+	// todo: still ugly
+	if (it == parts.begin() ) {
+	  *session->image = image;
+	}
+	session->images.push_back( image );
+#endif
+      }
+#endif
+      else throw string( "Unsupported image type: " + file );    
 
-    // Add this image to our cache, overwriting previous version if it exists
-    (*session->imageCache)[argument] = *(*session->image);
+      /* Disable module loading for now!
+      else{
 
-    if( session->loglevel >= 3 ){
-      *(session->logfile) << "FIF :: Created image" << endl;
-    }
+  #ifdef ENABLE_DL
+
+	// Check our map list for the requested type
+	if( moduleList.empty() ){
+	  throw string( "Unsupported image type: " + imtype );
+	}
+	else{
+
+	  map<string, string> :: iterator mod_it  = moduleList.find( imtype );
+
+	  if( mod_it == moduleList.end() ){
+	    throw string( "Unsupported image type: " + imtype );
+	  }
+	  else{
+	    // Construct our dynamic loading image decoder
+	    session->image = new DSOImage( test );
+	    (*session->image)->Load( (*mod_it).second );
+
+	    if( session->loglevel >= 2 ){
+	      *(session->logfile) << "FIF :: Image type: '" << imtype
+				  << "' requested ... using handler "
+				  << (*session->image)->getDescription() << endl;
+	    }
+	  }
+	}
+  #else
+	throw string( "Unsupported image type: " + imtype );
+  #endif
+      }
+      */
 
 
-    // Set the timestamp for the reply
-    session->response->setLastModified( (*session->image)->getTimestamp() );
+      // Open image and update timestamp
+      image->openImage();
+      //(*session->image)->openImage();
 
-    if( session->loglevel >= 2 ){
-      *(session->logfile) << "FIF :: Image dimensions are " << (*session->image)->getImageWidth()
-			  << " x " << (*session->image)->getImageHeight() << endl
-			  << "FIF :: Image contains " << (*session->image)->channels
-			  << " channel" << (((*session->image)->channels>1)?"s":"") << " with "
-			  << (*session->image)->bpc << " bit" << (((*session->image)->bpc>1)?"s":"") << " per channel" << endl;
-      tm *t = gmtime( &(*session->image)->timestamp );
-      char strt[64];
-      strftime( strt, 64, "%a, %d %b %Y %H:%M:%S GMT", t );
-      *(session->logfile) << "FIF :: Image timestamp: " << strt << endl;
-    }
+      // Check timestamp consistency. If cached timestamp is older, update metadata
+      if( timestamp > 0 && (timestamp < image->timestamp) ){
+	if( session->loglevel >= 2 ){
+	  *(session->logfile) << "FIF :: Image timestamp changed: reloading metadata" << endl;
+	}
+	image->loadImageInfo( image->currentX, image->currentY );
+      }
 
+      // Add this image to our cache, overwriting previous version if it exists
+      (*session->imageCache)[file] = *image;
+
+      if( session->loglevel >= 3 ){
+	*(session->logfile) << "FIF :: Created image" << endl;
+      }
+
+      // Set the timestamp for the reply
+      session->response->setLastModified( (*session->image)->getTimestamp() );
+
+      if( session->loglevel >= 2 ) {
+	*(session->logfile) << "FIF :: Image dimensions are " << image->getImageWidth()
+			    << " x " << image->getImageHeight() << endl
+			    << "FIF :: Image contains " << image->channels
+			    << " channel" << ((image->channels > 1) ? "s" : "") << " with "
+			    << image->bpc << " bit" << ((image->bpc > 1) ? "s" : "") << " per channel" << endl;
+	tm *t = gmtime( &(image->timestamp) );
+	char strt[64];
+	strftime( strt, 64, "%a, %d %b %Y %H:%M:%S GMT", t );
+	*(session->logfile) << "FIF :: Image timestamp: " << strt << endl;
+      }
+    } // end foreach(file)
   }
   catch( const file_error& error ){
     // Unavailable file error code is 1 3
@@ -249,5 +292,4 @@ void FIF::run( Session* session, const string& src ){
   if( session->loglevel >= 2 ){
     *(session->logfile)	<< "FIF :: Total command time " << command_timer.getTime() << " microseconds" << endl;
   }
-
 }
