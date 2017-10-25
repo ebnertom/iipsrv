@@ -147,10 +147,13 @@ void filter_dcoffset( RawTile& in ) {
     sum += buf[i];
   }
 
-  P mean = static_cast<P>( sum / len );
+  double mean = sum / len;
 
   for( size_t i = 0; i < len; ++i ) {
-    buf[i] = std::max<P>( static_cast<P>(0), static_cast<P>(buf[i] - mean) );
+    // careful here: we may (almost certainly will) be outputting 
+    // an unsigned type here. We want to perform the subtraction
+    // and clamp in floating point to avoid underflow. Cast last.
+    buf[i] = static_cast<P>( std::max( 0.0, buf[i] - mean ) );
   }
 }
 

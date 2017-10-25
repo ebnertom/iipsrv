@@ -136,7 +136,7 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
     bool do_offset = Environment::getDoDcOffset();
     if( do_offset ) {
       // subtract the mean intensity to account for background noise            
-	filter_dcoffset<uint16_t>( complete_image );
+      filter_dcoffset<uint16_t>( complete_image );
     }
 
     // Only use our floating point pipeline if necessary at this point 
@@ -268,18 +268,19 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
   composite.dataLength = composite.width * composite.height * out_Bpp;
   uint8_t *dst = new uint8_t[composite.dataLength]();
   composite.data = dst;  // this is cleaned up by raw tile  
-  unsigned int stride = composite.width * out_Bpp;
+  const unsigned int dst_stride = composite.width * out_Bpp;
+  const unsigned int src_stride = composite.width;
 
   for( int i = 0; i < complete_images.size(); ++i ) {
-    RawTile &image = complete_images[i];
-    uint8_t *src = static_cast<uint8_t*>(image.data);
+    const RawTile &image = complete_images[i];
+    const uint8_t *src = static_cast<const uint8_t*>(image.data);
     fcc_color color = colors[i];
 
     for( int y = 0; y < composite.height; ++y ) {
-      uint8_t *rowp = dst + y * stride;
+      uint8_t *rowp = dst + y * dst_stride;
       for( int x = 0; x < composite.width; ++x ) {
 	// get the gray value
-	auto gv = src[y * stride + x];
+	auto gv = src[y * src_stride + x];
 
 	// convert to color
 	auto r = static_cast<uint8_t>(color.r * (gv / (std::pow(2.0, image.bpc) - 1)));
