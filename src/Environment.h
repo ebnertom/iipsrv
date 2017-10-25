@@ -24,8 +24,9 @@
 
 /* Define some default values
  */
-#define VERBOSITY 1
+#define VERBOSITY 6
 #define LOGFILE "/tmp/iipsrv.log"
+#define LOGFILE_WINDOWS ".\\tmp\\iipsrv.log"
 #define MAX_IMAGE_CACHE_SIZE 10.0
 #define FILENAME_PATTERN "_pyr_"
 #define JPEG_QUALITY 75
@@ -46,6 +47,7 @@
 
 
 #include <string>
+#include <sstream>
 #include "zlib.h"
 
 
@@ -69,8 +71,14 @@ class Environment {
 
   static std::string getLogFile(){
     char* envpara = getenv( "LOGFILE" );
-    if( envpara ) return std::string( envpara );
-    else return LOGFILE;
+    if( envpara ) 
+      return std::string( envpara );
+    else 
+#ifdef WIN32
+      return LOGFILE_WINDOWS;
+#else
+      return LOGFILE;
+#endif
   }
 
 
@@ -93,6 +101,17 @@ class Environment {
     else filename_pattern = FILENAME_PATTERN;
 
     return filename_pattern;
+  }
+
+
+  static bool getDoDcOffset(){
+    char* envpara = getenv( "DO_DC_OFFSET" );    
+    bool value = true;
+    if( envpara ){
+      std::istringstream(envpara) >> value;      
+    }    
+
+    return value;
   }
 
 

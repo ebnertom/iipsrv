@@ -38,11 +38,7 @@
 
 #define MAXIMAGECACHE 1000  // Max number of items in image cache
 
-
-
 using namespace std;
-
-
 
 void FIF::run( Session* session, const string& src ){
 
@@ -74,7 +70,6 @@ void FIF::run( Session* session, const string& src ){
     }
   }
 
-
   // Create our IIPImage object
   IIPImage test;
 
@@ -90,18 +85,18 @@ void FIF::run( Session* session, const string& src ){
 
   // Put the image setup into a try block as object creation can throw an exception
   try{
-    // test for multiple images
+    // account for multiple images (for the FCC command)
     std::stringstream ss(argument);
     std::string item;
     std::vector<string> parts;
+
     while (std::getline(ss, item, ',')) {
       parts.push_back(item);
     }
 
     *session->logfile << parts.size() << " images for output" << endl;
-
-    // todo: ugly, need better way to handle multiple images
-    for( auto &it=parts.begin(); it != parts.end(); ++it ) {
+    
+    for( auto it=parts.begin(); it != parts.end(); ++it ) {
       const string file = *it;
       IIPImage *image;
 
@@ -150,8 +145,9 @@ void FIF::run( Session* session, const string& src ){
 	  *(session->logfile) << "FIF :: TIFF image detected" << endl;
 
 	image = new TPTImage( test );
-	// todo: still ugly
+	
 	if (it == parts.begin() ) {
+	  // assign the first image to the session image for other commands
 	  *session->image = image;
 	}
 	session->images.push_back( image );
@@ -162,15 +158,13 @@ void FIF::run( Session* session, const string& src ){
 	  *(session->logfile) << "FIF :: JPEG2000 image detected" << endl;
 	}
 #if defined(HAVE_KAKADU)
-	image = new KakaduImage( test );
-	// todo: still ugly
+	image = new KakaduImage( test );	
 	if (it == parts.begin() ) {
 	  *session->image = image;
 	}
 	session->images.push_back( image );
 #elif defined(HAVE_OPENJPEG)
-	image = new OpenJPEGImage( test );
-	// todo: still ugly
+	image = new OpenJPEGImage( test );	
 	if (it == parts.begin() ) {
 	  *session->image = image;
 	}
@@ -255,7 +249,6 @@ void FIF::run( Session* session, const string& src ){
     session->response->setError( "1 3", "FIF" );
     throw error;
   }
-
 
   // Check whether we have had an if_modified_since header. If so, compare to our image timestamp
   if( session->headers.find("HTTP_IF_MODIFIED_SINCE") != session->headers.end() ){

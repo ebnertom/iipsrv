@@ -191,7 +191,7 @@ copy "$(ProjectDir)\dependencies\dlls\x86\$(Configuration)\libfcgi.dll" "$(OutDi
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(ProjectDir)\dependencies\libs\x64\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

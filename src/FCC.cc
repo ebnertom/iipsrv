@@ -1,5 +1,9 @@
+#define NOMINMAX
+
 #include <string>
 #include <memory>
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include "Task.h"
 #include "TileManager.h"
@@ -7,22 +11,18 @@
 using namespace std;
 
 void FCC::send( Session *session, const std::vector<fcc_color> &colors )
-{
+{ 
   if( session->loglevel >= 2 ) {
     *(session->logfile) << "FCC handler reached" << endl;
-  }
-
-  if( (*session->image)->channels != 1 ) {
-    throw string( "unsupported format: FCC supports single channel input only" );
-  }
-
-  Timer function_timer;
-  this->session = session;
-  checkImage();
+  }  
 
   if( session->view->getBitDepth() != 8 ) {
     throw string( "unsupported format: FCC supports 8bpp output only" );
   }
+
+  Timer function_timer;
+  this->session = session;
+  checkImage();  
 
   // Time this command
   if( session->loglevel >= 2 ) {
@@ -34,7 +34,11 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
   // todo: copy RawTiles for now, but define move constructor later
 
   for( int i = 0; i < session->images.size(); ++i ) {
-    IIPImage *image = session->images[i];
+    IIPImage *image = session->images[i];    
+
+    if( image->getColourSpace() != GREYSCALE || image->channels != 1 || image->bpc != 16 ){      
+      throw string( "FCC :: only 16bpp grayscale images supported" );
+    }  
 
     // Calculate the number of tiles at the requested resolution
     unsigned int im_width = image->getImageWidth();
@@ -71,13 +75,13 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
       resampled_height = session->view->getRequestHeight();
 
       if( session->loglevel >= 3 ){
-	*(session->logfile) << "CVT :: Region: " << view_left << "," << view_top
+	*(session->logfile) << "FCC :: Region: " << view_left << "," << view_top
 			    << "," << view_width << "," << view_height << endl;
       }
     }
     else{
       if( session->loglevel >= 4 ) {
-	*(session->logfile) << "CVT :: No view port set" << endl;
+	*(session->logfile) << "FCC :: No view port set" << endl;
       }
 
       view_left = 0;
@@ -123,28 +127,48 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
     RawTile complete_image = tilemanager.getRegion( requested_res,
 						    session->view->xangle, session->view->yangle,
 						    session->view->getLayers(),
-						    view_left, view_top, view_width, view_height );
+						    view_left, view_top, view_width, view_height ); 
 
-    // Convert CIELAB to sRGB
-    if( image->getColourSpace() == CIELAB ){      
-      filter_LAB2sRGB( complete_image );      
-    }  
+    if( complete_image.compressionType != UNCOMPRESSED ) {
+      throw string( "FCC :: retrieved image data already compressed, uncompressed data buffer required" );
+    }
+
+    bool do_offset = Environment::getDoDcOffset();
+    if( do_offset ) {
+      // subtract the mean intensity to account for background noise            
+	filter_dcoffset<uint16_t>( complete_image );
+    }
 
     // Only use our floating point pipeline if necessary at this point 
     if( complete_image.bpc > 8 || session->view->floatProcessing() ){
-   
       // Apply normalization and perform float conversion
-      {
-	if( session->loglevel >= 5 ){
-	  function_timer.start();
-	}
-	filter_normalize( complete_image, (*session->image)->max, (*session->image)->min );
-	if( session->loglevel >= 5 ){
-	  *(session->logfile) << "FCC :: Converting to floating point and normalizing in "
-		  << function_timer.getTime() << " microseconds" << endl;
-	}
+      if( session->loglevel >= 5 ){
+	function_timer.start();
       }
 
+      // we want composites to be normalized to the min/max 
+      // intensity within the image for viewing so that dim
+      // channels aren't completely drowned out.
+      float min = std::pow(2.0f, complete_image.bpc) - 1;
+      float max = 0;
+      const uint16_t *p = static_cast<uint16_t*>(complete_image.data);
+
+      for (int i = 0; i < complete_image.width * complete_image.height; ++i) {
+	if (p[i] < min) min = static_cast<float>(p[i]);
+	if (p[i] > max) max = static_cast<float>(p[i]);
+      }
+	
+      std::vector<float> max_v;
+      std::vector<float> min_v;
+      max_v.push_back(max);
+      min_v.push_back(min);
+		
+      filter_normalize( complete_image, max_v, min_v );	
+	
+      if( session->loglevel >= 5 ){
+	*(session->logfile) << "FCC :: Converted to floating point and normalized in "
+		<< function_timer.getTime() << " microseconds" << endl;	
+      }
 
       // Apply hill shading if requested
       if( session->view->shaded ){
@@ -155,7 +179,6 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	}
       }
 
-
       // Apply color twist if requested
       if( session->view->ctw.size() ){
 	if( session->loglevel >= 5 ) function_timer.start();
@@ -164,7 +187,6 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	  *(session->logfile) << "FCC :: Applying color twist in " << function_timer.getTime() << " microseconds" << endl;
 	}
       }
-
 
       // Apply any gamma correction
       if( session->view->getGamma() != 1.0 ){
@@ -177,7 +199,6 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	}
       }
 
-
       // Apply inversion if requested
       if( session->view->inverted ){
 	if( session->loglevel >= 5 ) function_timer.start();
@@ -187,7 +208,6 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	}
       }
 
-
       // Apply color mapping if requested
       if( session->view->cmapped ){
 	if( session->loglevel >= 5 ) function_timer.start();
@@ -196,7 +216,6 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	  *(session->logfile) << "FCC :: Applying color map in " << function_timer.getTime() << " microseconds" << endl;
 	}
       }
-
 
       // Apply any contrast adjustments and potentially scale to the requested output bit depth    
       if( session->loglevel >= 5 ) function_timer.start();
@@ -223,15 +242,7 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	filter_interpolate_bilinear( complete_image, resampled_width, resampled_height );
 	break;
       }      
-    }
- 
-    // Reduce to 1 or 3 bands if we have an alpha channel or a multi-band image
-    if( (complete_image.channels==2) || (complete_image.channels>3 ) ){
-      int output_channels = (complete_image.channels==2)? 1 : 3;
-      if( session->loglevel >= 5 ) function_timer.start();
-	
-      filter_flatten( complete_image, output_channels );    
-    }
+    }    
 
     // Apply flip
     if( session->view->flip != 0 ){      
@@ -249,17 +260,15 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
     }
 
     complete_images.push_back( complete_image );
-    // todo: complete_images.emplace_back( complete_image );
-    
   } // end foreach( image )
-
-  // todo: this sets up our composite tile nicely, but it also involves an unnecessary memcpy 
+  
+  const int out_Bpp = 3;
   const RawTile &tmp = complete_images[0];
   RawTile composite( 0, tmp.resolution, tmp.hSequence, tmp.vSequence, tmp.width, tmp.height, 3, 8 );
-  composite.dataLength = composite.width * composite.height * 3;
+  composite.dataLength = composite.width * composite.height * out_Bpp;
   uint8_t *dst = new uint8_t[composite.dataLength]();
   composite.data = dst;  // this is cleaned up by raw tile  
-  unsigned int stride = composite.width;
+  unsigned int stride = composite.width * out_Bpp;
 
   for( int i = 0; i < complete_images.size(); ++i ) {
     RawTile &image = complete_images[i];
@@ -267,15 +276,15 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
     fcc_color color = colors[i];
 
     for( int y = 0; y < composite.height; ++y ) {
-      uint8_t *rowp = dst + y * stride * 3;
+      uint8_t *rowp = dst + y * stride;
       for( int x = 0; x < composite.width; ++x ) {
 	// get the gray value
 	auto gv = src[y * stride + x];
 
 	// convert to color
-	auto r = static_cast<uint8_t>(color.r * (gv / (pow(2.0, image.bpc) - 1)));
-	auto g = static_cast<uint8_t>(color.g * (gv / (pow(2.0, image.bpc) - 1)));
-	auto b = static_cast<uint8_t>(color.b * (gv / (pow(2.0, image.bpc) - 1)));
+	auto r = static_cast<uint8_t>(color.r * (gv / (std::pow(2.0, image.bpc) - 1)));
+	auto g = static_cast<uint8_t>(color.g * (gv / (std::pow(2.0, image.bpc) - 1)));
+	auto b = static_cast<uint8_t>(color.b * (gv / (std::pow(2.0, image.bpc) - 1)));
 
 	// compute alpha
 	auto ar = r / 255.0;
@@ -283,174 +292,54 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	auto ab = b / 255.0;
 
 	// alpha blend into the composite
-	rowp[x * 3] = static_cast<uint8_t>(min(255, max(0, r + (1 - ar) * rowp[x * 3])));
-	rowp[x * 3 + 1] = static_cast<uint8_t>(min(255, max(0, g + (1 - ag) * rowp[x * 3 + 1])));
-	rowp[x * 3 + 2] = static_cast<uint8_t>(min(255, max(0, b + (1 - ab) * rowp[x * 3 + 2])));
+	rowp[x * out_Bpp] = static_cast<uint8_t>(std::min(255.0, std::max(0.0, r + (1 - ar) * rowp[x * out_Bpp])));
+	rowp[x * out_Bpp + 1] = static_cast<uint8_t>(std::min(255.0, std::max(0.0, g + (1 - ag) * rowp[x * out_Bpp + 1])));
+	rowp[x * out_Bpp + 2] = static_cast<uint8_t>(std::min(255.0, std::max(0.0, b + (1 - ab) * rowp[x * out_Bpp + 2])));
       }
     }
   }
-
-  // todo: DC offset
-  // todo: normalize
-
-  // todo: remove
- /* {
-    ofstream ofs;
-    ofs.open("D:\\red.bin", ofstream::out | ofstream::binary);
-    size_t len = composite.width * composite.height;
-    unsigned char *buf = new unsigned char[len];
-    for (int i = 0, d = 0; i < len; ++i, d += 3) {
-      buf[i] = dst[d];
-    }
-    ofs.write((const char*)buf, len);
-    ofs.close();
-
-    ofs.open("D:\\green.bin", ofstream::out | ofstream::binary);        
-    for (int i = 0, d = 1; i < len; ++i, d += 3) {
-      buf[i] = dst[d];
-    }
-    ofs.write((const char*)buf, len);
-    ofs.close();
-
-    ofs.open("D:\\blue.bin", ofstream::out | ofstream::binary);        
-    for (int i = 0, d = 2; i < len; ++i, d += 3) {
-      buf[i] = dst[d];
-    }
-    ofs.write((const char*)buf, len);
-    ofs.close();
-  }*/
-
-  // Initialise our output compression object - this should set the header of 
-  // the image as well which is immediately pushed to the client
-  session->outputCompressor->InitCompression( composite, resampled_height );
-
-  // Add any XMP metadata to the image there is any in the original 
-  if( (*session->image)->getMetadata("xmp").size() > 0 ){
-    if( session->loglevel >= 4 ) *(session->logfile) << "FCC :: Adding XMP metadata" << endl;
-    session->outputCompressor->addXMPMetadata( (*session->image)->getMetadata("xmp") );
+  
+  // Compress to JPEG  
+  if( session->loglevel >= 4 ){
+    *(session->logfile) << "FCC :: Compressing UNCOMPRESSED to JPEG";      
   }
+  int len = session->jpeg->Compress( composite );  
 
-  unsigned int len = session->outputCompressor->getHeaderSize();
 
-#ifdef CHUNKED
-  snprintf( str, 1024, "%X\r\n", len );
-  if( session->loglevel >= 4 ) *(session->logfile) << "FCC :: Image Header Chunk : " << str;
+#ifndef DEBUG
+  char str[1024];
+
+  snprintf( str, 1024,
+	    "Server: iipsrv/%s\r\n"
+	    "X-Powered-By: IIPImage\r\n"
+	    "Content-Type: %s\r\n"
+            "Content-Length: %d\r\n"
+	    "Last-Modified: %s\r\n"
+	    "%s\r\n"
+	    "\r\n",
+	    VERSION, session->jpeg->getMimeType().c_str(),len,(*session->image)->getTimestamp().c_str(), session->response->getCacheControl().c_str() );
+
   session->out->printf( str );
 #endif
 
-  if( session->out->putStr( (const char*) session->outputCompressor->getHeader(), len ) != len ){
+
+  if( session->out->putStr( static_cast<const char*>(composite.data), len ) != len ){
     if( session->loglevel >= 1 ){
-      *(session->logfile) << "FCC :: Error writing output image header" << endl;
+      *(session->logfile) << "JTL :: Error writing jpeg tile" << endl;
     }
   }
 
-#ifdef CHUNKED
-  session->out->printf( "\r\n" );
-#endif
-
-  // Flush our block of data
   if( session->out->flush() == -1 ) {
     if( session->loglevel >= 1 ){
-      *(session->logfile) << "FCC :: Error flushing output image data" << endl;
-    }
-  }
-
-  // release the header pointer which is a no-op with JPG but important for PNG
-  session->outputCompressor->finishHeader();
-
-  // Send out the data per strip of fixed height.
-  // Allocate enough memory for this plus an extra 64k for instances where compressed
-  // data is greater than uncompressed - for PNG, we need to supply the output pointer
-  unsigned int strip_height = 128;
-  unsigned int channels = composite.channels;
-  stride = resampled_width * channels * composite.getBytesPerPixel();
-  unsigned int strip_size = stride * strip_height + 65636;
-  unsigned char* output = new unsigned char[strip_size];    
-
-  // there is an opportunity to go parallel with this but it would require a different approach
-  // in the Compressor classes - might be worth pursuing at some point - @beaudet
-  int strips = (resampled_height/strip_height) + (resampled_height%strip_height == 0 ? 0 : 1);
-  for( int n = 0; n < strips; n++ ) {
-    // Get the starting index for this strip of data
-    unsigned char* input = &((unsigned char*)composite.data)[n*strip_height*stride];
-
-    // The last strip may have a different height
-    if( (n==strips-1) && (resampled_height%strip_height!=0) ) {
-      strip_height = resampled_height % strip_height;
-    }
-
-    if( session->loglevel >= 3 ){
-      *(session->logfile) << "FCC :: About to compress strip with height " << strip_height << endl;
-    }
-
-    // Compress the strip
-    len = session->outputCompressor->CompressStrip( input, output, strip_size, strip_height );
-
-    if( session->loglevel >= 3 ){
-      *(session->logfile) << "FCC :: Compressed data strip length is " << len << endl;
-    }
-
-#ifdef CHUNKED
-    // Send chunk length in hex
-    snprintf( str, 1024, "%X\r\n", len );
-    if( session->loglevel >= 4 ) *(session->logfile) << "CVT :: Chunk : " << str;
-    session->out->printf( str );
-#endif
-
-    // Send this strip out to the client
-    if( len != session->out->putStr( (const char*) output, len ) ){
-      if( session->loglevel >= 1 ){
-	*(session->logfile) << "FCC :: Error writing output image strip data: " << len << endl;
-      }
-    }
-
-#ifdef CHUNKED
-    // Send closing chunk CRLF
-    session->out->printf( "\r\n" );
-#endif
-
-    // Flush our block of data
-    if( session->out->flush() == -1 ) {
-      if( session->loglevel >= 1 ){
-	*(session->logfile) << "FCC :: Error flushing output image data" << endl;
-      }
-    }
-  }
-
-  // Finish off the image compression
-  len = session->outputCompressor->Finish( output, strip_size );
-
-#ifdef CHUNKED
-  snprintf( str, 1024, "%X\r\n", len );
-  if( session->loglevel >= 4 ) *(session->logfile) << "FCC :: Final Data Chunk : " << str << endl;
-  session->out->printf( str );
-#endif
-
-  if( session->out->putStr( (const char*) output, len ) != len ){
-    if( session->loglevel >= 1 ){
-      *(session->logfile) << "FCC :: Error writing output image EOI markers" << endl;
-    }
-  }   
-
-  delete[] output;
-
-#ifdef CHUNKED
-  // Send closing chunk CRLF
-  session->out->printf( "\r\n" );
-  // Send closing blank chunk
-  session->out->printf( "0\r\n\r\n" );
-#endif
-
-  if( session->out->flush()  == -1 ) {
-    if( session->loglevel >= 1 ){
-      *(session->logfile) << "FCC :: Error flushing output image tile" << endl;
+      *(session->logfile) << "JTL :: Error flushing jpeg tile" << endl;
     }
   }
 
   // Inform our response object that we have sent something to the client
   session->response->setImageSent();
 
-  if( session->loglevel >= 2 ) {
-      *(session->logfile) << "FCC :: Total command time " << command_timer.getTime() << " microseconds" << endl;
+  // Total response time
+  if( session->loglevel >= 2 ){
+    *(session->logfile) << "JTL :: Total command time " << command_timer.getTime() << " microseconds" << endl;
   }
 }

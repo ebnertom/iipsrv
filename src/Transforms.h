@@ -24,6 +24,7 @@
 
 #include <vector>
 #include <limits>
+#include <algorithm>
 #include <math.h>
 #include "RawTile.h"
 
@@ -33,7 +34,7 @@
 
 template<class T>
 bool isBitDepthMatch( int b ){
-  return sizeof(T) * 8 != b;
+  return sizeof(T) * 8 == b;
 }
 
 /// Function to create normalized array
@@ -121,6 +122,37 @@ void filter_gamma( RawTile& in, float g );
     @param h target height
 */
 void filter_interpolate_nearestneighbour( RawTile& in, unsigned int w, unsigned int h );
+
+
+/// Subtract the image's mean value from itself
+/** @param P input/output pixel type
+    @param in tile input data    
+*/
+template<class P>
+void filter_dcoffset( RawTile& in ) {
+  if( !isBitDepthMatch<P>( in.bpc ) ){
+    throw string("specified bit depth does not match input bit depth" );
+  }
+
+  if( in.padded ){
+    // todo: if the tile is padded, how do we get the padding amount?
+    throw string( "filter_dcoffset does not support padded images" );
+  }
+
+  P *buf = static_cast<P*>(in.data);
+  double sum = 0;
+  size_t len = in.width * in.height;
+  
+  for( size_t i = 0; i < len; ++i ) {
+    sum += buf[i];
+  }
+
+  P mean = static_cast<P>( sum / len );
+
+  for( size_t i = 0; i < len; ++i ) {
+    buf[i] = std::max<P>( static_cast<P>(0), static_cast<P>(buf[i] - mean) );
+  }
+}
 
 /// Resize image using nearest neighbour interpolation
 /** @param P input/output pixel type

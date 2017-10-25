@@ -60,13 +60,13 @@ class FCGIWriter {
 
  private:
 
-  
-  FCGX_Stream *out;
+    
   static const unsigned int bufsize = 65536;
 
   /// Add the message to our buffer
   void cpy2buf( const char* msg, size_t len ){
     if( sz+len > bufsize ) buffer = (char*) realloc( buffer, sz+len );
+    // todo: potential memory leak here
     if( buffer ){
       memcpy( &buffer[sz], msg, len );
       sz += len;
@@ -75,7 +75,7 @@ class FCGIWriter {
 
 
  public:
-
+  FCGX_Stream *out;
   char* buffer;
   size_t sz;
 
@@ -91,7 +91,21 @@ class FCGIWriter {
 
   int putStr( const char* msg, int len ){
     cpy2buf( msg, len );
-    return FCGX_PutStr( msg, len, out );
+    if (out->isClosed){
+      int err = FCGX_GetError(out);
+      char buf[256];
+      sprintf(buf, "Closed before put, error = %d", err);
+      throw string(buf);
+    }
+    int result = FCGX_PutStr( msg, len, out );
+    if (out->isClosed){
+      int err = FCGX_GetError(out);
+      char buf[256];
+      sprintf(buf, "Closed after put, error = %d", err);
+      throw string(buf);
+    }
+
+    return result;
   };
   int putS( const char* msg ){
     cpy2buf( msg, strlen(msg) );
