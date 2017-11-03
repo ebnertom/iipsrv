@@ -111,7 +111,6 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
       }
     }
 
-
     if( session->loglevel >= 3 ){
       *(session->logfile) << "FCC :: Requested scaled region size is " << resampled_width << "x" << resampled_height
 			  << " at resolution " << requested_res
@@ -131,13 +130,7 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 
     if( complete_image.compressionType != UNCOMPRESSED ) {
       throw string( "FCC :: retrieved image data already compressed, uncompressed data buffer required" );
-    }
-
-    bool do_offset = Environment::getDoDcOffset();
-    if( do_offset ) {
-      // subtract the mean intensity to account for background noise            
-      filter_dcoffset<uint16_t>( complete_image );
-    }
+    }    
 
     // Only use our floating point pipeline if necessary at this point 
     if( complete_image.bpc > 8 || session->view->floatProcessing() ){
@@ -168,6 +161,12 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
       if( session->loglevel >= 5 ){
 	*(session->logfile) << "FCC :: Converted to floating point and normalized in "
 		<< function_timer.getTime() << " microseconds" << endl;	
+      }
+
+      bool do_offset = Environment::getDoDcOffset();
+      if( do_offset ) {
+	// subtract the mean intensity to account for background noise            
+	filter_dcoffset<float>( complete_image );
       }
 
       // Apply hill shading if requested
