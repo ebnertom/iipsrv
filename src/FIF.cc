@@ -147,9 +147,12 @@ void FIF::run( Session* session, const string& src ){
 	image = new TPTImage( test );
 	
 	if (it == parts.begin() ) {
-	  // assign the first image to the session image for other commands
+	  // assign the first here to maintain backward 
+	  // compatibility with commands which aren't FCC.
 	  *session->image = image;
 	}
+
+	// save the image here in case this is an FCC sequence
 	session->images.push_back( image );
       }
 #if defined(HAVE_KAKADU) || defined(HAVE_OPENJPEG)
@@ -172,46 +175,10 @@ void FIF::run( Session* session, const string& src ){
 #endif
       }
 #endif
-      else throw string( "Unsupported image type: " + file );    
-
-      /* Disable module loading for now!
-      else{
-
-  #ifdef ENABLE_DL
-
-	// Check our map list for the requested type
-	if( moduleList.empty() ){
-	  throw string( "Unsupported image type: " + imtype );
-	}
-	else{
-
-	  map<string, string> :: iterator mod_it  = moduleList.find( imtype );
-
-	  if( mod_it == moduleList.end() ){
-	    throw string( "Unsupported image type: " + imtype );
-	  }
-	  else{
-	    // Construct our dynamic loading image decoder
-	    session->image = new DSOImage( test );
-	    (*session->image)->Load( (*mod_it).second );
-
-	    if( session->loglevel >= 2 ){
-	      *(session->logfile) << "FIF :: Image type: '" << imtype
-				  << "' requested ... using handler "
-				  << (*session->image)->getDescription() << endl;
-	    }
-	  }
-	}
-  #else
-	throw string( "Unsupported image type: " + imtype );
-  #endif
-      }
-      */
-
+      else throw string( "Unsupported image type: " + file );
 
       // Open image and update timestamp
-      image->openImage();
-      //(*session->image)->openImage();
+      image->openImage();      
 
       // Check timestamp consistency. If cached timestamp is older, update metadata
       if( timestamp > 0 && (timestamp < image->timestamp) ){

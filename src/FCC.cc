@@ -10,6 +10,13 @@
 
 using namespace std;
 
+void dump_buf(const char *buf, const size_t len, const std::string &path) {
+  ofstream ofs;
+  ofs.open(path, ofstream::out | ofstream::binary);
+  ofs.write(buf, len);
+  ofs.close();
+}
+
 void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 { 
   if( session->loglevel >= 2 ) {
@@ -97,7 +104,7 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
     if( !session->view->allow_upscaling ){
       if(resampled_width > im_width) resampled_width = im_width;
       if(resampled_height > im_height) resampled_height = im_height;
-    }
+    }    
 
     // If we have requested that the aspect ratio be maintained, make sure the final image fits *within* the requested size.
     // Don't adjust images if we have less than 0.5% difference as this is often due to rounding in resolution levels
@@ -218,12 +225,12 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 
       // Apply any contrast adjustments and potentially scale to the requested output bit depth    
       if( session->loglevel >= 5 ) function_timer.start();
-      filter_contrast( complete_image, session->view->getContrast(), session->view->getBitDepth() );
+	filter_contrast( complete_image, session->view->getContrast(), session->view->getBitDepth() );
       if( session->loglevel >= 5 ){
 	*(session->logfile) << "FCC :: Applying contrast of " << session->view->getContrast()
 	  << " and converting to 8bit in " << function_timer.getTime() << " microseconds" << endl;
       }
-    }  	
+    }  
 
     // Resize our image as requested. Use the interpolation method requested in the server configuration.
     //  - Use bilinear interpolation by default  
@@ -241,7 +248,7 @@ void FCC::send( Session *session, const std::vector<fcc_color> &colors )
 	filter_interpolate_bilinear( complete_image, resampled_width, resampled_height );
 	break;
       }      
-    }    
+    } 
 
     // Apply flip
     if( session->view->flip != 0 ){      

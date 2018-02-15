@@ -456,11 +456,8 @@ int main( int argc, char *argv[] )
 
     // Time each request
     if( loglevel >= 2 ) request_timer.start();
-
-
-    // Declare our image pointer here outside of the try scope
-    //  so that we can close the image on exceptions
-    IIPImage *image = NULL;
+    
+    IIPImage *image = NULL;    
     JPEGCompressor jpeg( jpeg_quality );
 #ifdef HAVE_PNG
     PNGCompressor png( png_compression_level, png_filter_type ); // PNG provides lossless compression
@@ -480,10 +477,13 @@ int main( int argc, char *argv[] )
     response.setCORS( cors );
     response.setCacheControl( cache_control );
 
+    // Declare our session object here outside of the try scope
+    // so that we can close the image on exceptions
+    Session session;
+
     try{
 
-      // Set up our session data object
-      Session session;
+      // Set up our session data object      
       session.image = &image;
       session.response = &response;
       session.view = &view;
@@ -610,11 +610,7 @@ int main( int argc, char *argv[] )
 	  delete task;
 	  task = NULL;
 	}
-
-
       }
-
-
 
       ////////////////////////////////////////////////////////
       ////////// Send out our Errors if necessary ////////////
@@ -723,7 +719,6 @@ int main( int argc, char *argv[] )
 	  */
 	writer.printf( response.getAdvert( version ).c_str() );
       }
-
     }
 
     // Image file errors
@@ -770,7 +765,12 @@ int main( int argc, char *argv[] )
       delete task;
       task = NULL;
     }
-    delete image;
+
+    // this deletes any images loaded by FIF as well as the local 'image' pointer
+    for ( int i = 0; i < session.images.size(); ++i ) {
+      delete session.images[i];
+    }
+    
     image = NULL;
     IIPcount ++;
 

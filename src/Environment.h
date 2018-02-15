@@ -29,16 +29,16 @@
 #define LOGFILE_WINDOWS ".\\tmp\\iipsrv.log"
 #define MAX_IMAGE_CACHE_SIZE 10.0
 #define FILENAME_PATTERN "_pyr_"
-#define JPEG_QUALITY 75
-#define MAX_CVT 5000
+#define JPEG_QUALITY 80
+#define MAX_CVT 100000
 #define MAX_LAYERS 0
-#define FILESYSTEM_PREFIX ""
+#define FILESYSTEM_PREFIX "C:\\Users\\edward.swangren\\Documents\\images\\"
 #define WATERMARK ""
 #define WATERMARK_PROBABILITY 1.0
 #define WATERMARK_OPACITY 1.0
 #define LIBMEMCACHED_SERVERS "localhost"
 #define LIBMEMCACHED_TIMEOUT 86400  // 24 hours
-#define INTERPOLATION 1
+#define INTERPOLATION 0
 #define CORS "";
 #define BASE_URL "";
 #define CACHE_CONTROL "max-age=86400"; // 24 hours
