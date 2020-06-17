@@ -31,6 +31,7 @@ RUN sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list && \
       nginx && \
     apt-get -y build-dep iipimage
 
+RUN apt-get -y install libpng-dev
 WORKDIR /usr/src/iipsrv
 # copy the source
 COPY ./ /usr/src/iipsrv
